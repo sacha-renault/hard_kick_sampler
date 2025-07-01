@@ -52,7 +52,7 @@ fn load_wav(file_path: &str) -> Result<(u32, Vec<f32>), Box<dyn std::error::Erro
     Ok((sample_rate, samples))
 }
 
-pub fn interpolate(buffer: &Vec<f32>, position: f32) -> f32 {
+pub fn interpolate(buffer: &[f32], position: f32) -> f32 {
     let index = position.floor() as usize;
     if index >= buffer.len() {
         0.

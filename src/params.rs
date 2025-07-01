@@ -59,9 +59,9 @@ impl Default for SampleWrapperParams {
             // ADSR Parameters
             attack: FloatParam::new(
                 "Attack",
-                0.01, // 10ms default
+                0.0, // 0ms default! I want the kick to go brrrrr
                 FloatRange::Skewed {
-                    min: 0.001,                            // 1ms minimum
+                    min: 0.,                               // 1ms minimum
                     max: 5.0,                              // 5s maximum
                     factor: FloatRange::skew_factor(-2.0), // Exponential curve
                 },
@@ -85,7 +85,7 @@ impl Default for SampleWrapperParams {
 
             sustain: FloatParam::new(
                 "Sustain",
-                0.7, // 70% default
+                1.0, // default to 100%, we don't want the sample to be modified unless the user specify it
                 FloatRange::Linear { min: 0.0, max: 1.0 },
             )
             .with_smoother(SmoothingStyle::Linear(50.0))
@@ -95,7 +95,7 @@ impl Default for SampleWrapperParams {
 
             release: FloatParam::new(
                 "Release",
-                0.3, // 300ms default
+                0.010, // 10ms default to short release to avoid end clic
                 FloatRange::Skewed {
                     min: 0.001,
                     max: 10.0, // Longer release times are useful

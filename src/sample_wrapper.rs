@@ -100,6 +100,9 @@ impl SampleWrapper {
     /// - The note the user is playing
     /// - The `param_note_offset` which is a combination of root note selected for the sample + semitone set in param
     /// If the param `is_tonal` isn't set to true, midi note has no influence
+    /// TODO
+    /// Double check this is okay with interleaved stereo sample
+    /// For me, looks like there will be crosstalk between channel and that could be horrible
     pub fn increment_playback_position(&mut self) {
         let param_note_offset =
             self.get_params().semitone_offset.value() + self.get_params().root_note.value();
@@ -133,14 +136,21 @@ impl SampleWrapper {
         }
 
         if let Some(buffer) = self.buffer.as_ref() {
+            // The sample might not start right away
+            let start_position = 0.;
+
             // Check bounds before accessing
-            if self.playback_position >= buffer.len() as f32 {
+            if self.playback_position + start_position >= buffer.len() as f32 {
                 self.note_offset = None;
                 return 0.0;
             }
 
             // Get the sample value
-            let sample_value = utils::interpolate(&buffer, self.playback_position);
+            // TODO
+            // Might wanna double check this function and take an additional parameter channels
+            // To know how many channels are expected ...
+            let sample_value =
+                utils::interpolate(&buffer[start_position as usize..], self.playback_position);
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
