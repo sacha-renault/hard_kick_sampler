@@ -68,13 +68,18 @@ impl SampleWrapper {
         }
     }
 
+    pub fn stop_playing(&mut self) {
+        self.playback_position = 0.0;
+        self.note_offset = None;
+    }
+
     pub fn change_sample_rate_output(&mut self, sample_rate: f32) {
         self.target_sample_rate = sample_rate;
     }
 
-    pub fn stop_playing(&mut self) {
-        self.playback_position = 0.0;
-        self.note_offset = None;
+    pub fn change_channel_number(&mut self, channel_num: usize) {
+        // TODO
+        // fit the sample to the number of channels !
     }
 
     pub fn load_audio_file(&mut self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -136,11 +141,8 @@ impl SampleWrapper {
         }
 
         if let Some(buffer) = self.buffer.as_ref() {
-            // The sample might not start right away
-            let start_position = 0.;
-
             // Check bounds before accessing
-            if self.playback_position + start_position >= buffer.len() as f32 {
+            if self.playback_position >= buffer.len() as f32 {
                 self.note_offset = None;
                 return 0.0;
             }
@@ -149,8 +151,7 @@ impl SampleWrapper {
             // TODO
             // Might wanna double check this function and take an additional parameter channels
             // To know how many channels are expected ...
-            let sample_value =
-                utils::interpolate(&buffer[start_position as usize..], self.playback_position);
+            let sample_value = utils::interpolate(&buffer, self.playback_position);
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
