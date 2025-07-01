@@ -100,13 +100,16 @@ impl SampleWrapper {
     /// - The note the user is playing
     /// - The `param_note_offset` which is a combination of root note selected for the sample + semitone set in param
     /// If the param `is_tonal` isn't set to true, midi note has no influence
-    pub fn increment_playback_position(&mut self, param_note_offset: i8, is_tonal: bool) {
-        let midi_note_offset = if is_tonal {
+    pub fn increment_playback_position(&mut self) {
+        let param_note_offset =
+            self.get_params().semitone_offset.value() + self.get_params().root_note.value();
+        let midi_note_offset = if self.get_params().is_tonal.value() {
             self.note_offset.unwrap_or(0)
         } else {
             0
         };
-        let playback_rate = 2.0_f32.powf((midi_note_offset + param_note_offset) as f32 / 12.0);
+        let playback_rate =
+            2.0_f32.powf((midi_note_offset + param_note_offset as i8) as f32 / 12.0);
         self.playback_position +=
             playback_rate * (self.target_sample_rate / self.sample_rate as f32);
     }
@@ -130,25 +133,20 @@ impl SampleWrapper {
         }
 
         if let Some(buffer) = self.buffer.as_ref() {
-            let sample_index = self.playback_position as usize;
-
             // Check bounds before accessing
-            if sample_index >= buffer.len() {
+            if self.playback_position >= buffer.len() as f32 {
                 self.note_offset = None;
                 return 0.0;
             }
 
+            // Get the sample value
+            let sample_value = utils::interpolate(&buffer, self.playback_position);
+
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
-            let root_note_offset = 0; // self.get_params().root_note.value();
-            let param_note_offset = 0; // self.get_params().semitone_offset.value();
-            let is_tonal = true; // self.get_params().tonal.value();
-
-            // Get the sample value
-            let sample_value = buffer[sample_index];
 
             // Update playback position
-            self.increment_playback_position(param_note_offset + root_note_offset, is_tonal);
+            self.increment_playback_position();
 
             sample_value * gain
         } else {

@@ -12,8 +12,30 @@ pub struct SampleWrapperParams {
     #[id = "muted"]
     pub muted: BoolParam,
 
+    #[id = "is_tonal"]
+    pub is_tonal: BoolParam,
+
     #[id = "gain"]
     pub gain: FloatParam,
+
+    #[id = "root_note"]
+    pub root_note: IntParam,
+
+    #[id = "semitone_offset"]
+    pub semitone_offset: IntParam,
+
+    // ADSR Envelope Parameters
+    #[id = "attack"]
+    pub attack: FloatParam,
+
+    #[id = "decay"]
+    pub decay: FloatParam,
+
+    #[id = "sustain"]
+    pub sustain: FloatParam,
+
+    #[id = "release"]
+    pub release: FloatParam,
 }
 
 impl Default for SampleWrapperParams {
@@ -21,6 +43,7 @@ impl Default for SampleWrapperParams {
         Self {
             sample_path: Arc::new(RwLock::new(None)),
             muted: BoolParam::new("Muted", false),
+            is_tonal: BoolParam::new("Muted", true),
             gain: FloatParam::new(
                 "Gain",
                 util::db_to_gain(0.0),
@@ -30,6 +53,58 @@ impl Default for SampleWrapperParams {
                     factor: FloatRange::gain_skew_factor(-30.0, 30.0),
                 },
             ),
+            root_note: IntParam::new("Root Note", 0, IntRange::Linear { min: 0, max: 11 }),
+            semitone_offset: IntParam::new("Root Note", 0, IntRange::Linear { min: -24, max: 24 }),
+
+            // ADSR Parameters
+            attack: FloatParam::new(
+                "Attack",
+                0.01, // 10ms default
+                FloatRange::Skewed {
+                    min: 0.001,                            // 1ms minimum
+                    max: 5.0,                              // 5s maximum
+                    factor: FloatRange::skew_factor(-2.0), // Exponential curve
+                },
+            )
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            decay: FloatParam::new(
+                "Decay",
+                0.1, // 100ms default
+                FloatRange::Skewed {
+                    min: 0.001,
+                    max: 5.0,
+                    factor: FloatRange::skew_factor(-2.0),
+                },
+            )
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            sustain: FloatParam::new(
+                "Sustain",
+                0.7, // 70% default
+                FloatRange::Linear { min: 0.0, max: 1.0 },
+            )
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit("%")
+            .with_value_to_string(formatters::v2s_f32_percentage(1))
+            .with_string_to_value(formatters::s2v_f32_percentage()),
+
+            release: FloatParam::new(
+                "Release",
+                0.3, // 300ms default
+                FloatRange::Skewed {
+                    min: 0.001,
+                    max: 10.0, // Longer release times are useful
+                    factor: FloatRange::skew_factor(-2.0),
+                },
+            )
+            .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
         }
     }
 }
