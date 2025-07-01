@@ -29,6 +29,9 @@ pub struct SampleWrapper {
 
     /// Current trigerred note
     note_offset: Option<i8>,
+
+    /// Number of output channels
+    num_channel: usize,
 }
 
 impl SampleWrapper {
@@ -51,6 +54,7 @@ impl SampleWrapper {
             sample_rate: 0,
             target_sample_rate: 0.,
             note_offset: None,
+            num_channel: 0,
         }
     }
 
@@ -77,9 +81,8 @@ impl SampleWrapper {
         self.target_sample_rate = sample_rate;
     }
 
-    pub fn change_channel_number(&mut self, channel_num: usize) {
-        // TODO
-        // fit the sample to the number of channels !
+    pub fn change_channel_number(&mut self, num_channel: usize) {
+        self.num_channel = num_channel;
     }
 
     pub fn load_audio_file(&mut self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -134,11 +137,15 @@ impl SampleWrapper {
         self.get_params().muted.value()
     }
 
-    pub fn next(&mut self, is_first_channel: bool) -> f32 {
+    pub fn next(&mut self, channel_index: usize) -> f32 {
         // Check if we should play first
         if self.note_offset.is_none() || self.is_muted() {
             return 0.0;
         }
+
+        // check if it's the first channel of the frame
+        // to be processed
+        let is_first_channel = channel_index == 0;
 
         if let Some(buffer) = self.buffer.as_ref() {
             // Check bounds before accessing
@@ -151,13 +158,17 @@ impl SampleWrapper {
             // TODO
             // Might wanna double check this function and take an additional parameter channels
             // To know how many channels are expected ...
-            let sample_value = utils::interpolate(&buffer, self.playback_position);
+            // let sample_value = utils::get_sample_at(&buffer, self.playback_position, channel_index);
+            let sample_value =
+                buffer[self.playback_position as usize * self.num_channel + channel_index];
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
 
-            // Update playback position
-            self.increment_playback_position();
+            // Update playback position only on the first channel of the frame
+            if is_first_channel {
+                self.increment_playback_position();
+            }
 
             sample_value * gain
         } else {

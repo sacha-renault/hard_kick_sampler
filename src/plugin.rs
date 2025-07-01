@@ -1,4 +1,5 @@
 use nih_plug::prelude::*;
+use std::num::NonZero;
 use std::sync::Arc;
 
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
@@ -104,12 +105,19 @@ impl Plugin for HardKickSampler {
 
     fn initialize(
         &mut self,
-        _audio_io_layout: &AudioIOLayout,
+        audio_io_layout: &AudioIOLayout,
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        // Get number of channel
+        let num_channel = audio_io_layout
+            .main_output_channels
+            .unwrap_or(const { NonZero::new(2).unwrap() })
+            .get();
+
         for sample_wrapper in self.samples.iter_mut() {
             sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
+            sample_wrapper.change_channel_number(num_channel as usize);
         }
         true
     }
@@ -137,7 +145,7 @@ impl Plugin for HardKickSampler {
             // The first channel. What's will happens basically is that on the first sample
             // sample wrapper calls smoother.next() and all the subsequant calls will be made
             // On previous_value() so that it doesn't call next `channel_number` time per sample
-            let mut first_channel = true;
+            let mut channel_index = 0;
 
             for sample in channel_samples {
                 *sample = 0.;
@@ -145,14 +153,14 @@ impl Plugin for HardKickSampler {
                 // each sample provide its next value
                 // Sum all playing samples
                 for sample_wrapper in &mut self.samples {
-                    *sample += sample_wrapper.next(first_channel);
+                    *sample += sample_wrapper.next(channel_index);
                 }
 
                 // apply gain
                 *sample *= gain;
 
                 // set first channel to false
-                first_channel = false;
+                channel_index += 1;
             }
         }
 
