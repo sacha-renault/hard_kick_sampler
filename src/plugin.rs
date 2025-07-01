@@ -33,7 +33,7 @@ impl HardKickSampler {
             match event {
                 NoteEvent::NoteOn { note, velocity, .. } => {
                     // Trigger a sample
-                    self.trigger_sample(note, velocity);
+                    self.start_sample(note, velocity);
                 }
                 NoteEvent::NoteOff { .. } => {
                     // Stop a sample
@@ -45,15 +45,19 @@ impl HardKickSampler {
     }
 
     /// Trigger the samples to play for all the ones that are loaded
-    fn trigger_sample(&mut self, note: u8, velocity: f32) {
-        todo!()
+    fn start_sample(&mut self, note: u8, velocity: f32) {
+        for sample in self.samples.iter_mut() {
+            sample.start_playing(note, velocity);
+        }
     }
 
     /// Just stop playing, we don't have to specify the notes
     /// because we don't handle multi notes playing in the same
     /// time anyway
     fn stop_sample(&mut self) {
-        todo!()
+        for sample in self.samples.iter_mut() {
+            sample.stop_playing();
+        }
     }
 }
 
@@ -101,12 +105,12 @@ impl Plugin for HardKickSampler {
     fn initialize(
         &mut self,
         _audio_io_layout: &AudioIOLayout,
-        _buffer_config: &BufferConfig,
+        buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        // Resize buffers and perform other potentially expensive initialization operations here.
-        // The `reset()` function is always called right after this function. You can remove this
-        // function if you do not need it.
+        for sample_wrapper in self.samples.iter_mut() {
+            sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
+        }
         true
     }
 
