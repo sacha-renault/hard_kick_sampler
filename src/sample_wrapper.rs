@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use nih_plug::nih_log;
-
 use crate::params::{HardKickSamplerParams, SampleWrapperParams};
 use crate::utils;
 
@@ -148,8 +146,11 @@ impl SampleWrapper {
         let is_first_channel = channel_index == 0;
 
         if let Some(buffer) = self.buffer.as_ref() {
+            // Get the sample_index
+            let sample_index = self.playback_position as usize * self.num_channel + channel_index;
+
             // Check bounds before accessing
-            if self.playback_position >= buffer.len() as f32 {
+            if sample_index >= buffer.len() {
                 self.note_offset = None;
                 return 0.0;
             }
@@ -159,8 +160,7 @@ impl SampleWrapper {
             // Might wanna double check this function and take an additional parameter channels
             // To know how many channels are expected ...
             // let sample_value = utils::get_sample_at(&buffer, self.playback_position, channel_index);
-            let sample_value =
-                buffer[self.playback_position as usize * self.num_channel + channel_index];
+            let sample_value = buffer[sample_index];
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);

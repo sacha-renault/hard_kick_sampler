@@ -3,7 +3,7 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
-use crate::sample_wrapper::SampleWrapper;
+use crate::sample_wrapper::{self, SampleWrapper};
 
 pub struct HardKickSampler {
     // Params of the plugin
@@ -119,6 +119,10 @@ impl Plugin for HardKickSampler {
             sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
             sample_wrapper.change_channel_number(num_channel as usize);
         }
+
+        // Load some random shit samples
+        let _ = self.samples[0].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Punches\OPS_ECHKE1_PUNCH_5.wav");
+        let _ = self.samples[1].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Crunches\OPS_ECHKE1_CRUNCH_12_G.wav");
         true
     }
 

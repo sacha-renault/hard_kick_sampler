@@ -43,7 +43,7 @@ impl Default for SampleWrapperParams {
         Self {
             sample_path: Arc::new(RwLock::new(None)),
             muted: BoolParam::new("Muted", false),
-            is_tonal: BoolParam::new("Muted", true),
+            is_tonal: BoolParam::new("Tonal", true),
             gain: FloatParam::new(
                 "Gain",
                 util::db_to_gain(0.0),
@@ -54,7 +54,11 @@ impl Default for SampleWrapperParams {
                 },
             ),
             root_note: IntParam::new("Root Note", 0, IntRange::Linear { min: 0, max: 11 }),
-            semitone_offset: IntParam::new("Root Note", 0, IntRange::Linear { min: -24, max: 24 }),
+            semitone_offset: IntParam::new(
+                "Semitone Offset",
+                0,
+                IntRange::Linear { min: -24, max: 24 },
+            ),
 
             // ADSR Parameters
             attack: FloatParam::new(
