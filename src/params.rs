@@ -5,6 +5,8 @@ use std::{
 
 use nih_plug::prelude::*;
 
+use crate::utils;
+
 pub const MAX_SAMPLES: usize = 8;
 
 #[derive(Params)]
@@ -45,8 +47,11 @@ impl Default for SampleWrapperParams {
     fn default() -> Self {
         Self {
             sample_path: Arc::new(RwLock::new(None)),
+
             muted: BoolParam::new("Muted", false),
+
             is_tonal: BoolParam::new("Tonal", true),
+
             gain: FloatParam::new(
                 "Gain",
                 util::db_to_gain(0.0),
@@ -55,13 +60,20 @@ impl Default for SampleWrapperParams {
                     max: util::db_to_gain(30.0),
                     factor: FloatRange::gain_skew_factor(-30.0, 30.0),
                 },
-            ),
-            root_note: IntParam::new("Root Note", 0, IntRange::Linear { min: 0, max: 11 }),
+            )
+            .with_unit(" dB")
+            .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
+            .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+
+            root_note: IntParam::new("Root Note", 0, IntRange::Linear { min: 0, max: 11 })
+                .with_value_to_string(Arc::new(utils::semitones_to_note)),
+
             semitone_offset: IntParam::new(
                 "Semitone Offset",
                 0,
                 IntRange::Linear { min: -24, max: 24 },
-            ),
+            )
+            .with_unit(" semitones"),
 
             // ADSR Parameters
             attack: FloatParam::new(

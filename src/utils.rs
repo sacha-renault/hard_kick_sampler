@@ -49,3 +49,30 @@ fn load_wav(file_path: &Path) -> Result<(u32, Vec<f32>), Box<dyn std::error::Err
 pub fn interpolate(v1: f32, v2: f32, fraction: f32) -> f32 {
     v1 * (1. - fraction) + v2 * fraction
 }
+
+pub fn semitones_to_note(mut semi: i32) -> String {
+    // Handle negative values and values >= 12 by wrapping to 0-11 range
+    if semi < 0 {
+        semi = ((semi % 12) + 12) % 12;
+    } else if semi >= 12 {
+        semi = semi % 12;
+    }
+
+    let value = match semi {
+        0 => "C",
+        1 => "C#",
+        2 => "D",
+        3 => "D#",
+        4 => "E",
+        5 => "F",
+        6 => "F#",
+        7 => "G",
+        8 => "G#",
+        9 => "A",
+        10 => "A#",
+        11 => "B",
+        _ => unreachable!("Semitone value should be 0-11 after modulo operation"),
+    };
+
+    String::from(value)
+}

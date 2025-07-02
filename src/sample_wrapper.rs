@@ -345,14 +345,12 @@ impl SampleWrapper {
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
-            let attack =
-                utils::load_smooth_param(&self.get_params().attack.smoothed, is_first_channel);
-            let decay =
-                utils::load_smooth_param(&self.get_params().decay.smoothed, is_first_channel);
-            let sustain =
-                utils::load_smooth_param(&self.get_params().sustain.smoothed, is_first_channel);
-            let release =
-                utils::load_smooth_param(&self.get_params().release.smoothed, is_first_channel);
+
+            // We don't want those param to be any smoothed!
+            let attack = self.get_params().attack.value();
+            let decay = self.get_params().decay.value();
+            let sustain = self.get_params().sustain.value();
+            let release = self.get_params().release.value();
 
             // Get the adrs value
             let adrs_enveloppe =
