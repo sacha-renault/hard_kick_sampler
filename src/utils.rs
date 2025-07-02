@@ -2,6 +2,7 @@ use std::path::Path;
 
 use nih_plug::prelude::{Smoothable, Smoother};
 
+#[inline]
 pub fn load_smooth_param<T: Smoothable>(smoother: &Smoother<T>, is_first_channel: bool) -> T {
     if is_first_channel {
         smoother.next()
@@ -44,6 +45,7 @@ fn load_wav(file_path: &Path) -> Result<(u32, Vec<f32>), Box<dyn std::error::Err
     Ok((sample_rate, samples))
 }
 
+#[inline]
 pub fn interpolate(v1: f32, v2: f32, fraction: f32) -> f32 {
     v1 * (1. - fraction) + v2 * fraction
 }

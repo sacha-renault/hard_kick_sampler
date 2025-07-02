@@ -104,6 +104,7 @@ impl MultiChannelAdsr {
     ///
     /// This is useful for voice management - when `true`, the voice can be
     /// deallocated or reused for a new note.
+    #[inline]
     pub fn is_idling(&self) -> bool {
         matches!(self.stage, AdsrStage::Idle)
     }
@@ -136,6 +137,7 @@ impl MultiChannelAdsr {
     }
 
     /// Internal method that advances the envelope by one sample and returns the current value.
+    #[inline]
     fn next(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) -> f32 {
         match &self.stage {
             AdsrStage::Idle => {

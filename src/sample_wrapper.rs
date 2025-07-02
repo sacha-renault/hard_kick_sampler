@@ -161,7 +161,7 @@ impl SampleWrapper {
         file_path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // load audio
-        let audio = utils::load_audio_file(&file_path)?;
+        let audio = utils::load_audio_file(file_path)?;
 
         // Set the buffer and sample rate
         self.sample_rate = audio.0;
@@ -214,6 +214,7 @@ impl SampleWrapper {
     /// - Semitone offset parameter (additional fine tuning)
     ///
     /// If `is_tonal` parameter is false, MIDI note has no influence on pitch.
+    #[inline]
     pub fn increment_playback_position(&mut self) {
         let param_note_offset =
             self.get_params().semitone_offset.value() + self.get_params().root_note.value();
@@ -259,8 +260,21 @@ impl SampleWrapper {
     /// # Returns
     ///
     /// `true` if the sample is muted, `false` otherwise
+    #[inline]
     pub fn is_muted(&self) -> bool {
         self.get_params().muted.value()
+    }
+
+    /// Returns whether this sample should produce silence.
+    ///
+    /// This is a convenience method that combines all conditions that would
+    /// result in no audio output. A sample is considered silent if:
+    /// - The ADSR envelope is in idle state (not playing)
+    /// - The sample is muted via parameters
+    /// - No audio buffer is loaded
+    #[inline]
+    pub fn is_silent(&self) -> bool {
+        self.adsr.is_idling() || self.is_muted() || self.buffer.is_none()
     }
 
     /// Generates the next audio sample for the specified channel.
@@ -288,7 +302,7 @@ impl SampleWrapper {
     /// - Uses linear interpolation for smooth playback at non-integer positions
     pub fn next(&mut self, channel_index: usize) -> f32 {
         // Check if we should play first
-        if self.adsr.is_idling() || self.is_muted() {
+        if self.is_silent() {
             return 0.0;
         }
 
