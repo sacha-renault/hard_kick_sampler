@@ -116,13 +116,13 @@ impl Plugin for HardKickSampler {
             .get();
 
         for sample_wrapper in self.sample_wrappers.iter_mut() {
+            sample_wrapper.cleanup_wrapper();
             sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
             sample_wrapper.change_channel_number(num_channel as usize);
-        }
 
-        // Load some random shit samples
-        let _ = self.sample_wrappers[0].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Punches\OPS_ECHKE1_PUNCH_5.wav");
-        let _ = self.sample_wrappers[1].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Crunches\OPS_ECHKE1_CRUNCH_12_G.wav");
+            // Load the file that is saved in the preset!
+            let _ = sample_wrapper.load_preset_sample();
+        }
         true
     }
 
@@ -164,4 +164,6 @@ impl Plugin for HardKickSampler {
 
         ProcessStatus::Normal
     }
+
+    fn filter_state(state: &mut PluginState) {}
 }

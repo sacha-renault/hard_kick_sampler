@@ -117,6 +117,25 @@ impl SampleWrapper {
         Ok(())
     }
 
+    pub fn load_preset_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Get file path
+        let file_path = match self.get_params().sample_path.read() {
+            Ok(path_guard) => match path_guard.as_ref() {
+                Some(path) => path.clone(),
+                None => return Ok(()),
+            },
+            Err(_) => return Err("Error fetching file path".into()),
+        };
+
+        // load audio
+        let audio = utils::load_audio_file(&file_path)?;
+
+        // Set the buffer and sample rate
+        self.sample_rate = audio.0;
+        self.buffer = Some(audio.1);
+        Ok(())
+    }
+
     /// Increment the playback position based on:
     /// - Sample rate
     /// - The note the user is playing
@@ -138,11 +157,16 @@ impl SampleWrapper {
     }
 
     /// Reset entirely the sample wrapper
-    pub fn _cleanup_wrapper(&mut self) {
-        let params = self.params.clone();
-        let target_sample_rate = self.target_sample_rate;
-        *self = Self::new(params, self.index);
-        self.target_sample_rate = target_sample_rate;
+    pub fn cleanup_wrapper(&mut self) {
+        // Clear sample data
+        self.buffer = None;
+
+        // Reset playback state
+        self.playback_position = 0.0;
+        self.midi_note = None;
+
+        // Reset ADSR envelope
+        self.adsr.reset();
     }
 
     pub fn reset(&mut self) {
