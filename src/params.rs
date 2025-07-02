@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
 use nih_plug::prelude::*;
 
@@ -7,7 +10,7 @@ pub const MAX_SAMPLES: usize = 8;
 #[derive(Params)]
 pub struct SampleWrapperParams {
     #[persist = "sample_path"]
-    pub sample_path: Arc<RwLock<Option<String>>>,
+    pub sample_path: Arc<RwLock<Option<PathBuf>>>,
 
     #[id = "muted"]
     pub muted: BoolParam,

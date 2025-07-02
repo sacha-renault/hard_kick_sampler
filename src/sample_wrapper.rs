@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::adsr::MultiChannelAdsr;
@@ -92,9 +93,15 @@ impl SampleWrapper {
         self.num_channel = num_channel;
     }
 
-    pub fn load_audio_file(&mut self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn load_audio_file(
+        &mut self,
+        file_path_str: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Converto as pathbug
+        let file_path = PathBuf::from(file_path_str);
+
         // load audio
-        let audio = utils::load_audio_file(file_path)?;
+        let audio = utils::load_audio_file(&file_path)?;
 
         // Set the buffer and sample rate
         self.sample_rate = audio.0;
@@ -102,7 +109,7 @@ impl SampleWrapper {
 
         // If buffer is loaded, we set the sample path
         match self.get_params().sample_path.write() {
-            Ok(mut path) => *path = Some(String::from(file_path)),
+            Ok(mut path) => *path = Some(file_path),
             _ => return Err("Couldn't set the file path".into()),
         };
 
