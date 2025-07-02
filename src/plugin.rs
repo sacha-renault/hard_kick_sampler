@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
 use crate::sample_wrapper::SampleWrapper;
+use crate::tasks::{self, TaskIn, TaskOut};
 
 pub struct HardKickSampler {
     // Params of the plugin
@@ -13,6 +14,9 @@ pub struct HardKickSampler {
 
     // Sample wrapper
     sample_wrappers: Vec<SampleWrapper>,
+
+    // The task receiver
+    receiver: Option<std::sync::mpsc::Receiver<TaskOut>>,
 }
 
 impl Default for HardKickSampler {
@@ -24,6 +28,7 @@ impl Default for HardKickSampler {
         Self {
             params: params.clone(),
             sample_wrappers,
+            receiver: None,
         }
     }
 }
@@ -60,6 +65,21 @@ impl HardKickSampler {
     fn stop_sample(&mut self) {
         for sample in self.sample_wrappers.iter_mut() {
             sample.stop_playing();
+        }
+    }
+
+    fn handle_messages(&mut self) {
+        if let Some(receiver) = &self.receiver {
+            while let Ok(task) = receiver.try_recv() {
+                match task {
+                    TaskOut::LoadedFile(file_data) => {
+                        self.sample_wrappers.get_mut(file_data.index).map(|sample| {
+                            // Use a function to set the sample !
+                            //sample.set_sample(file_data)
+                        })
+                    }
+                };
+            }
         }
     }
 }
@@ -99,7 +119,7 @@ impl Plugin for HardKickSampler {
     // More advanced plugins can use this to run expensive background tasks. See the field's
     // documentation for more information. `()` means that the plugin does not have any background
     // tasks.
-    type BackgroundTask = ();
+    type BackgroundTask = TaskIn;
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
@@ -148,6 +168,9 @@ impl Plugin for HardKickSampler {
         _aux: &mut AuxiliaryBuffers,
         context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
+        // Handle messages
+        self.handle_messages();
+
         // Handle the context
         self.handle_context(context);
 
@@ -175,5 +198,17 @@ impl Plugin for HardKickSampler {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(IcedState::from_size(800, 600), self.params.clone())
+    }
+
+    fn task_executor(&mut self) -> TaskExecutor<Self> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        self.receiver = Some(receiver);
+
+        Box::new(move |task| match task {
+            TaskIn::LoadAudioFile(file) => {
+                // Actually load the file
+                // sender.send(...)
+            }
+        })
     }
 }

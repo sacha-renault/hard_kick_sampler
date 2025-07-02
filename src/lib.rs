@@ -3,6 +3,7 @@ mod editor;
 mod params;
 mod plugin;
 mod sample_wrapper;
+mod tasks;
 mod utils;
 
 use nih_plug::prelude::*;

@@ -14,7 +14,7 @@ members = ["xtask"]
 crate-type = ["cdylib"]
 
 [dependencies]
-derive_more = {version = "2.0.1", features = ["full"]}
+derive_more = { version = "2.0.1", features = ["full"] }
 hound = "3.5"
 # Remove the `assert_process_allocs` feature to allow allocations on the audio
 # thread in debug builds.
