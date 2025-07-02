@@ -65,7 +65,7 @@ impl Default for SampleWrapperParams {
                 "Attack",
                 0.0, // 0ms default! I want the kick to go brrrrr
                 FloatRange::Skewed {
-                    min: 0.,                               // 1ms minimum
+                    min: 0.,                               // 0ms minimum
                     max: 5.0,                              // 5s maximum
                     factor: FloatRange::skew_factor(-2.0), // Exponential curve
                 },

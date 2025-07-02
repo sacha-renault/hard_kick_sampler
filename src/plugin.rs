@@ -10,18 +10,18 @@ pub struct HardKickSampler {
     params: Arc<HardKickSamplerParams>,
 
     // Sample wrapper
-    samples: Vec<SampleWrapper>,
+    sample_wrappers: Vec<SampleWrapper>,
 }
 
 impl Default for HardKickSampler {
     fn default() -> Self {
         let params = Arc::new(HardKickSamplerParams::default());
-        let samples = (0..MAX_SAMPLES)
+        let sample_wrappers = (0..MAX_SAMPLES)
             .map(|index| SampleWrapper::new(params.clone(), index))
             .collect();
         Self {
             params: params.clone(),
-            samples: samples,
+            sample_wrappers,
         }
     }
 }
@@ -47,7 +47,7 @@ impl HardKickSampler {
 
     /// Trigger the samples to play for all the ones that are loaded
     fn start_sample(&mut self, note: u8, velocity: f32) {
-        for sample in self.samples.iter_mut() {
+        for sample in self.sample_wrappers.iter_mut() {
             sample.start_playing(note, velocity);
         }
     }
@@ -56,7 +56,7 @@ impl HardKickSampler {
     /// because we don't handle multi notes playing in the same
     /// time anyway
     fn stop_sample(&mut self) {
-        for sample in self.samples.iter_mut() {
+        for sample in self.sample_wrappers.iter_mut() {
             sample.stop_playing();
         }
     }
@@ -115,14 +115,14 @@ impl Plugin for HardKickSampler {
             .unwrap_or(const { NonZero::new(2).unwrap() })
             .get();
 
-        for sample_wrapper in self.samples.iter_mut() {
+        for sample_wrapper in self.sample_wrappers.iter_mut() {
             sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
             sample_wrapper.change_channel_number(num_channel as usize);
         }
 
         // Load some random shit samples
-        let _ = self.samples[0].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Punches\OPS_ECHKE1_PUNCH_5.wav");
-        let _ = self.samples[1].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Crunches\OPS_ECHKE1_CRUNCH_12_G.wav");
+        let _ = self.sample_wrappers[0].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Punches\OPS_ECHKE1_PUNCH_5.wav");
+        let _ = self.sample_wrappers[1].load_audio_file(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Crunches\OPS_ECHKE1_CRUNCH_12_G.wav");
         true
     }
 
@@ -145,26 +145,17 @@ impl Plugin for HardKickSampler {
             // Smoothing is optionally built into the parameters themselves
             let gain = self.params.gain.smoothed.next();
 
-            // We initialize a value to false to say to the sample wrapper that this might be or not
-            // The first channel. What's will happens basically is that on the first sample
-            // sample wrapper calls smoother.next() and all the subsequant calls will be made
-            // On previous_value() so that it doesn't call next `channel_number` time per sample
-            let mut channel_index = 0;
-
-            for sample in channel_samples {
+            for (channel_index, sample) in channel_samples.into_iter().enumerate() {
                 *sample = 0.;
 
                 // each sample provide its next value
                 // Sum all playing samples
-                for sample_wrapper in &mut self.samples {
+                for sample_wrapper in &mut self.sample_wrappers {
                     *sample += sample_wrapper.next(channel_index);
                 }
 
                 // apply gain
                 *sample *= gain;
-
-                // set first channel to false
-                channel_index += 1;
             }
         }
 

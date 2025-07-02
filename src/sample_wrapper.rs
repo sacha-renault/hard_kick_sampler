@@ -131,7 +131,7 @@ impl SampleWrapper {
     }
 
     /// Reset entirely the sample wrapper
-    pub fn reset(&mut self) {
+    pub fn _reset(&mut self) {
         let params = self.params.clone();
         let target_sample_rate = self.target_sample_rate;
         *self = Self::new(params, self.index);
@@ -180,6 +180,11 @@ impl SampleWrapper {
                 }
             };
 
+            // Update playback position only on the first channel of the frame
+            if is_first_channel {
+                self.increment_playback_position();
+            }
+
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
             let attack =
@@ -190,11 +195,6 @@ impl SampleWrapper {
                 utils::load_smooth_param(&self.get_params().sustain.smoothed, is_first_channel);
             let release =
                 utils::load_smooth_param(&self.get_params().release.smoothed, is_first_channel);
-
-            // Update playback position only on the first channel of the frame
-            if is_first_channel {
-                self.increment_playback_position();
-            }
 
             // Get the adrs value
             let adrs_enveloppe =
