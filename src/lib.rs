@@ -1,4 +1,5 @@
 mod adsr;
+mod editor;
 mod params;
 mod plugin;
 mod sample_wrapper;

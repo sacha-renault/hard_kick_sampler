@@ -1,7 +1,9 @@
 use nih_plug::prelude::*;
+use nih_plug_iced::IcedState;
 use std::num::NonZero;
 use std::sync::Arc;
 
+use crate::editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
 use crate::sample_wrapper::SampleWrapper;
 
@@ -169,5 +171,9 @@ impl Plugin for HardKickSampler {
         }
 
         ProcessStatus::Normal
+    }
+
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        editor::create(IcedState::from_size(800, 600), self.params.clone())
     }
 }
