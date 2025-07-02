@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SampleWrapperParams};
 use crate::utils;
 
 // C4 is MIDI note 60 (base note)
 const BASE_NOTE: u8 = 60;
+const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
 pub struct SampleWrapper {
     /// A ref to the params
@@ -16,7 +18,7 @@ pub struct SampleWrapper {
     /// Holds the values of the sample
     buffer: Option<Vec<f32>>,
 
-    /// The target sample rate (i.e. the sample rate of the output buffer)
+    /// The target sample rate (i.e. the sample rate of the host)
     target_sample_rate: f32,
 
     /// Sample rate of the sample itself, not the process sr
@@ -30,6 +32,9 @@ pub struct SampleWrapper {
 
     /// Number of output channels
     num_channel: usize,
+
+    /// The adsr envelope
+    adsr: MultiChannelAdsr,
 }
 
 impl SampleWrapper {
@@ -50,9 +55,10 @@ impl SampleWrapper {
             buffer: None,
             playback_position: 0.,
             sample_rate: 0,
-            target_sample_rate: 0.,
+            target_sample_rate: DEFAULT_SAMPLE_RATE,
             note_offset: None,
             num_channel: 0,
+            adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
         }
     }
 
@@ -67,12 +73,14 @@ impl SampleWrapper {
 
             // Reset playback position to start of sample
             self.playback_position = 0.0;
+
+            // Trigger the adsr
+            self.adsr.note_on();
         }
     }
 
     pub fn stop_playing(&mut self) {
-        self.playback_position = 0.0;
-        self.note_offset = None;
+        self.adsr.note_off();
     }
 
     pub fn change_sample_rate_output(&mut self, sample_rate: f32) {
@@ -137,7 +145,7 @@ impl SampleWrapper {
 
     pub fn next(&mut self, channel_index: usize) -> f32 {
         // Check if we should play first
-        if self.note_offset.is_none() || self.is_muted() {
+        if self.adsr.is_idling() || self.is_muted() {
             return 0.0;
         }
 
@@ -164,13 +172,26 @@ impl SampleWrapper {
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
+            let attack =
+                utils::load_smooth_param(&self.get_params().attack.smoothed, is_first_channel);
+            let decay =
+                utils::load_smooth_param(&self.get_params().decay.smoothed, is_first_channel);
+            let sustain =
+                utils::load_smooth_param(&self.get_params().sustain.smoothed, is_first_channel);
+            let release =
+                utils::load_smooth_param(&self.get_params().release.smoothed, is_first_channel);
 
             // Update playback position only on the first channel of the frame
             if is_first_channel {
                 self.increment_playback_position();
             }
 
-            sample_value * gain
+            // Get the adrs value
+            let adrs_enveloppe =
+                self.adsr
+                    .next_value(attack, decay, sustain, release, is_first_channel);
+
+            sample_value * gain * adrs_enveloppe
         } else {
             0.0
         }

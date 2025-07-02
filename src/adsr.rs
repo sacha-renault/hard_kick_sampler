@@ -100,6 +100,10 @@ impl MultiChannelAdsr {
         return matches!(self.stage, AdsrStage::Idle);
     }
 
+    pub fn is_playing(&self) -> bool {
+        return !matches!(self.stage, AdsrStage::Idle);
+    }
+
     /// Internal method that advances the envelope by one sample and returns the current value.
     fn next(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) -> f32 {
         match &self.stage {

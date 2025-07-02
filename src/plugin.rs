@@ -3,7 +3,7 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
-use crate::sample_wrapper::{self, SampleWrapper};
+use crate::sample_wrapper::SampleWrapper;
 
 pub struct HardKickSampler {
     // Params of the plugin
