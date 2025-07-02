@@ -28,7 +28,7 @@ pub struct SampleWrapper {
     playback_position: f32,
 
     /// Current trigerred note
-    note_offset: Option<i8>,
+    midi_note: Option<i8>,
 
     /// Number of output channels
     num_channel: usize,
@@ -56,7 +56,7 @@ impl SampleWrapper {
             playback_position: 0.,
             sample_rate: 0,
             target_sample_rate: DEFAULT_SAMPLE_RATE,
-            note_offset: None,
+            midi_note: None,
             num_channel: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
         }
@@ -69,7 +69,7 @@ impl SampleWrapper {
             let semitone_offset = note as i8 - BASE_NOTE as i8;
 
             // Set the note that is currently playing
-            self.note_offset = Some(semitone_offset);
+            self.midi_note = Some(semitone_offset);
 
             // Reset playback position to start of sample
             self.playback_position = 0.0;
@@ -120,7 +120,7 @@ impl SampleWrapper {
         let param_note_offset =
             self.get_params().semitone_offset.value() + self.get_params().root_note.value();
         let midi_note_offset = if self.get_params().is_tonal.value() {
-            self.note_offset.unwrap_or(0)
+            self.midi_note.unwrap_or(0)
         } else {
             0
         };
@@ -131,11 +131,17 @@ impl SampleWrapper {
     }
 
     /// Reset entirely the sample wrapper
-    pub fn _reset(&mut self) {
+    pub fn _cleanup_wrapper(&mut self) {
         let params = self.params.clone();
         let target_sample_rate = self.target_sample_rate;
         *self = Self::new(params, self.index);
         self.target_sample_rate = target_sample_rate;
+    }
+
+    pub fn reset(&mut self) {
+        self.adsr.reset();
+        self.midi_note = None;
+        self.playback_position = 0.;
     }
 
     pub fn is_muted(&self) -> bool {
@@ -174,7 +180,7 @@ impl SampleWrapper {
                 // Nothing defined, we reset note + adsr
                 _ => {
                     // Case we are out of bounds
-                    self.note_offset = None;
+                    self.midi_note = None;
                     self.adsr.reset();
                     return 0.0;
                 }

@@ -129,6 +129,9 @@ impl Plugin for HardKickSampler {
     fn reset(&mut self) {
         // Reset buffers and envelopes here. This can be called from the audio thread and may not
         // allocate. You can remove this function if you do not need it.
+        for sample_wrapper in self.sample_wrappers.iter_mut() {
+            sample_wrapper.reset();
+        }
     }
 
     fn process(
