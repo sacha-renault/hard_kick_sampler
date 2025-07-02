@@ -47,6 +47,12 @@ impl MultiChannelAdsr {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.stage = AdsrStage::Idle;
+        self.current_value = 0.;
+        self.stage_progress = 0.;
+    }
+
     /// Triggers the start of a note, beginning the attack phase.
     ///
     /// This immediately transitions the envelope to the attack stage and resets
@@ -97,11 +103,11 @@ impl MultiChannelAdsr {
     /// This is useful for voice management - when `true`, the voice can be
     /// deallocated or reused for a new note.
     pub fn is_idling(&self) -> bool {
-        return matches!(self.stage, AdsrStage::Idle);
+        matches!(self.stage, AdsrStage::Idle)
     }
 
     pub fn is_playing(&self) -> bool {
-        return !matches!(self.stage, AdsrStage::Idle);
+        !matches!(self.stage, AdsrStage::Idle)
     }
 
     /// Internal method that advances the envelope by one sample and returns the current value.

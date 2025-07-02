@@ -52,16 +52,6 @@ fn load_wav(file_path: &str) -> Result<(u32, Vec<f32>), Box<dyn std::error::Erro
     Ok((sample_rate, samples))
 }
 
-pub fn interpolate(buffer: &[f32], position: f32) -> f32 {
-    let index = position.floor() as usize;
-    if index >= buffer.len() {
-        0.
-    } else if index + 1 == buffer.len() {
-        buffer[index]
-    } else {
-        let n = buffer[index];
-        let n_plus_1 = buffer[index + 1];
-        let fraction = position - (index as f32);
-        n * (1. - fraction) + n_plus_1 * fraction
-    }
+pub fn interpolate(v1: f32, v2: f32, fraction: f32) -> f32 {
+    v1 * (1. - fraction) + v2 * fraction
 }

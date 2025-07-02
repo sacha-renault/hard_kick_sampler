@@ -85,6 +85,7 @@ impl SampleWrapper {
 
     pub fn change_sample_rate_output(&mut self, sample_rate: f32) {
         self.target_sample_rate = sample_rate;
+        self.adsr.set_sample_rate(sample_rate);
     }
 
     pub fn change_channel_number(&mut self, num_channel: usize) {
@@ -113,10 +114,8 @@ impl SampleWrapper {
     /// - Sample rate
     /// - The note the user is playing
     /// - The `param_note_offset` which is a combination of root note selected for the sample + semitone set in param
+    ///
     /// If the param `is_tonal` isn't set to true, midi note has no influence
-    /// TODO
-    /// Double check this is okay with interleaved stereo sample
-    /// For me, looks like there will be crosstalk between channel and that could be horrible
     pub fn increment_playback_position(&mut self) {
         let param_note_offset =
             self.get_params().semitone_offset.value() + self.get_params().root_note.value();
@@ -157,18 +156,29 @@ impl SampleWrapper {
             // Get the sample_index
             let sample_index = self.playback_position as usize * self.num_channel + channel_index;
 
-            // Check bounds before accessing
-            if sample_index >= buffer.len() {
-                self.note_offset = None;
-                return 0.0;
-            }
+            // depending on if it'the value is Some or None
+            let sample_value = match (
+                buffer.get(sample_index),
+                buffer.get(sample_index + self.num_channel),
+            ) {
+                // Case were current value and next value are both defined
+                // We can interpolate
+                (Some(value), Some(value_next)) => {
+                    let fraction = self.playback_position.fract();
+                    utils::interpolate(*value, *value_next, fraction)
+                }
 
-            // Get the sample value
-            // TODO
-            // Might wanna double check this function and take an additional parameter channels
-            // To know how many channels are expected ...
-            // let sample_value = utils::get_sample_at(&buffer, self.playback_position, channel_index);
-            let sample_value = buffer[sample_index];
+                // Current value is define but next is out of range
+                (Some(value), None) => *value,
+
+                // Nothing defined, we reset note + adsr
+                _ => {
+                    // Case we are out of bounds
+                    self.note_offset = None;
+                    self.adsr.reset();
+                    return 0.0;
+                }
+            };
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
