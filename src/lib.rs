@@ -1,3 +1,4 @@
+mod adsr;
 mod params;
 mod plugin;
 mod sample_wrapper;
