@@ -1,3 +1,5 @@
+use nih_plug::nih_error;
+
 /// Represents the current stage of the ADSR envelope
 #[derive(Debug)]
 enum AdsrStage {
@@ -106,6 +108,33 @@ impl MultiChannelAdsr {
         matches!(self.stage, AdsrStage::Idle)
     }
 
+    #[inline]
+    fn safe_current_value(&self) -> f32 {
+        #[cfg(debug_assertions)]
+        {
+            if self.current_value.is_nan() {
+                panic!("ADSR value is NaN!");
+            }
+            if self.current_value.is_infinite() {
+                panic!("ADSR value is infinite: {}", self.current_value);
+            }
+            if self.current_value < -0.001 || self.current_value > 1.001 {
+                panic!(
+                    "ADSR value out of bounds: {} (stage: {:?}, progress: {})",
+                    self.current_value, self.stage, self.stage_progress
+                );
+            }
+        }
+
+        // return current value
+        if self.current_value.is_finite() {
+            self.current_value.clamp(0.0, 1.0)
+        } else {
+            nih_error!("Invalid value in adsr output ?? {}", self.current_value);
+            0.0 // Reset to safe value if NaN or infinite
+        }
+    }
+
     /// Internal method that advances the envelope by one sample and returns the current value.
     fn next(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) -> f32 {
         match &self.stage {
@@ -159,8 +188,8 @@ impl MultiChannelAdsr {
             }
         }
 
-        // return current value
-        self.current_value
+        // On debug build, plugin will crash if invalid value occurs
+        self.safe_current_value()
     }
 
     /// Generates the next envelope value for multi-channel audio.
@@ -186,7 +215,7 @@ impl MultiChannelAdsr {
     ) -> f32 {
         // Do not advance if it's not first channel, just return the same value
         if !is_first_channel {
-            self.current_value
+            self.safe_current_value()
         } else {
             self.next(attack, decay, sustain, release)
         }
