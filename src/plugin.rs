@@ -115,15 +115,21 @@ impl Plugin for HardKickSampler {
             .unwrap_or(const { NonZero::new(2).unwrap() })
             .get();
 
-        for sample_wrapper in self.sample_wrappers.iter_mut() {
+        // init a bool that knows if everything went well
+        let mut success = true;
+
+        for (index, sample_wrapper) in self.sample_wrappers.iter_mut().enumerate() {
             sample_wrapper.cleanup_wrapper();
             sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
             sample_wrapper.change_channel_number(num_channel as usize);
 
             // Load the file that is saved in the preset!
-            let _ = sample_wrapper.load_preset_sample();
+            if let Err(e) = sample_wrapper.load_preset_sample() {
+                nih_error!("Failed to load sample for wrapper {}: {}", index, e);
+                success = false;
+            }
         }
-        true
+        success
     }
 
     fn reset(&mut self) {
@@ -164,6 +170,4 @@ impl Plugin for HardKickSampler {
 
         ProcessStatus::Normal
     }
-
-    fn filter_state(state: &mut PluginState) {}
 }
