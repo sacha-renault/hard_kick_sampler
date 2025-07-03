@@ -30,11 +30,15 @@ impl ClapPlugin for HardKickSampler {
 nih_export_clap!(HardKickSampler);
 
 impl Vst3Plugin for HardKickSampler {
-    const VST3_CLASS_ID: [u8; 16] = *b"Exactly16Chars!!";
+    const VST3_CLASS_ID: [u8; 16] = *b"HardKickSampler!";
 
     // And also don't forget to change these categories
-    const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] =
-        &[Vst3SubCategory::Fx, Vst3SubCategory::Dynamics];
+    const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[
+        Vst3SubCategory::Instrument,
+        Vst3SubCategory::Synth,
+        Vst3SubCategory::Drum,
+        Vst3SubCategory::Sampler,
+    ];
 }
 
 // We will not export vst3 right away, i have to figure out

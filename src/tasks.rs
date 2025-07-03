@@ -11,7 +11,7 @@ pub struct AudioData {
 
 #[derive(Debug)]
 pub enum TaskIn {
-    LoadAudioFile(usize, PathBuf),
+    LoadFile(usize, PathBuf),
 }
 
 pub enum TaskOut {

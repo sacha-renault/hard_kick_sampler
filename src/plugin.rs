@@ -208,7 +208,7 @@ impl Plugin for HardKickSampler {
         self.receiver = Some(receiver);
 
         Box::new(move |task| match task {
-            TaskIn::LoadAudioFile(index, path) => {
+            TaskIn::LoadFile(index, path) => {
                 // Actually load the file
                 if let Ok(audio_data) = utils::load_audio_file(&path) {
                     let _ = sender.send(TaskOut::LoadedFile(index, path, audio_data));
