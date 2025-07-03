@@ -118,6 +118,14 @@ pub fn create_editor(
                         }
                     });
 
+                    ui.add_space(SPACE_AMOUT);
+
+                    // Add a semitone slider
+                    ui.label(format!(
+                        "Semitone offset : {}",
+                        sample_params.semitone_offset.value()
+                    ));
+
                     // Show what is loaded
                     ui.label(get_sample_name(sample_params));
                 })

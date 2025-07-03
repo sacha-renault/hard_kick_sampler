@@ -7,7 +7,7 @@ use crate::tasks::AudioData;
 use crate::utils;
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
-const BASE_NOTE: u8 = 75;
+const BASE_NOTE: u8 = 72;
 
 /// Default sample rate used for initialization
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
@@ -243,7 +243,7 @@ impl SampleWrapper {
         let final_offset = midi_note_offset + param_note_offset - root_note;
         let playback_rate = 2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE);
         self.playback_position +=
-            playback_rate * (self.target_sample_rate / self.sample_rate as f32);
+            playback_rate * (self.sample_rate as f32 / self.target_sample_rate);
     }
 
     /// Completely resets and clears the sample wrapper.
