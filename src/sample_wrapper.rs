@@ -177,6 +177,17 @@ impl SampleWrapper {
         Ok(())
     }
 
+    pub fn clear_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.buffer = None;
+        self.adsr.reset();
+        match self.get_params().sample_path.write() {
+            Ok(mut path) => *path = None,
+            _ => return Err("Couldn't set the file path".into()),
+        };
+
+        Ok(())
+    }
+
     /// Loads the sample from the stored file path in parameters.
     ///
     /// This is used when loading presets or restoring the sampler state.

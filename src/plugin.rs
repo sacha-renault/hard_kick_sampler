@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::editor::create_editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
 use crate::sample_wrapper::SampleWrapper;
-use crate::tasks::{TaskIn, TaskOut};
+use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
 
 pub struct HardKickSampler {
@@ -16,7 +16,7 @@ pub struct HardKickSampler {
     sample_wrappers: Vec<SampleWrapper>,
 
     // The task receiver
-    receiver: Option<std::sync::mpsc::Receiver<TaskOut>>,
+    receiver: Option<std::sync::mpsc::Receiver<TaskResults>>,
 }
 
 impl Default for HardKickSampler {
@@ -78,10 +78,16 @@ impl HardKickSampler {
         // Handle events
         while let Ok(task) = receiver.try_recv() {
             match task {
-                TaskOut::LoadedFile(index, path, data) => self
-                    .sample_wrappers
-                    .get_mut(index)
-                    .map(|sample| sample.load_and_set_audio_file(&path, data)),
+                TaskResults::LoadedFile(index, path, data) => {
+                    self.sample_wrappers
+                        .get_mut(index)
+                        .map(|sample| sample.load_and_set_audio_file(&path, data));
+                }
+                TaskResults::ClearSample(index) => {
+                    self.sample_wrappers
+                        .get_mut(index)
+                        .map(|sample| sample.clear_sample());
+                }
             };
         }
     }
@@ -122,7 +128,7 @@ impl Plugin for HardKickSampler {
     // More advanced plugins can use this to run expensive background tasks. See the field's
     // documentation for more information. `()` means that the plugin does not have any background
     // tasks.
-    type BackgroundTask = TaskIn;
+    type BackgroundTask = TaskRequests;
 
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
@@ -208,10 +214,24 @@ impl Plugin for HardKickSampler {
         self.receiver = Some(receiver);
 
         Box::new(move |task| match task {
-            TaskIn::LoadFile(index, path) => {
+            TaskRequests::TransfertTask(task) => {
+                // Actually load the file
+                let _ = sender.send(task);
+            }
+            TaskRequests::LoadFile(index, path) => {
                 // Actually load the file
                 if let Ok(audio_data) = utils::load_audio_file(&path) {
-                    let _ = sender.send(TaskOut::LoadedFile(index, path, audio_data));
+                    let _ = sender.send(TaskResults::LoadedFile(index, path, audio_data));
+                }
+            }
+            TaskRequests::OpenFilePicker(index) => {
+                let path_opt = rfd::FileDialog::new()
+                    .add_filter("audio", &["wav"])
+                    .pick_file();
+                if let Some(path) = path_opt {
+                    if let Ok(audio_data) = utils::load_audio_file(&path) {
+                        let _ = sender.send(TaskResults::LoadedFile(index, path, audio_data));
+                    }
                 }
             }
         })

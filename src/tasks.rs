@@ -10,10 +10,14 @@ pub struct AudioData {
 }
 
 #[derive(Debug)]
-pub enum TaskIn {
-    LoadFile(usize, PathBuf),
+pub enum TaskResults {
+    LoadedFile(usize, PathBuf, AudioData),
+    ClearSample(usize),
 }
 
-pub enum TaskOut {
-    LoadedFile(usize, PathBuf, AudioData),
+#[derive(Debug)]
+pub enum TaskRequests {
+    TransfertTask(TaskResults),
+    LoadFile(usize, PathBuf),
+    OpenFilePicker(usize),
 }

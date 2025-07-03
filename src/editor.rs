@@ -1,12 +1,40 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use egui::*;
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
-use crate::params::HardKickSamplerParams;
+use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
-use crate::tasks::TaskIn;
+use crate::tasks::{TaskRequests, TaskResults};
+
+const SPACE_AMOUT: f32 = 15_f32;
+
+fn get_current_tab(ctx: &Context) -> usize {
+    ctx.data(|data| data.get_temp::<usize>(Id::new("tab")).clone().unwrap_or(0))
+}
+
+fn set_current_tab(ctx: &Context, current_tab: usize) {
+    ctx.data_mut(|data| {
+        data.insert_temp(Id::new("tab"), current_tab);
+    });
+}
+
+fn get_sample_name(sample_params: &SampleWrapperParams) -> String {
+    sample_params
+        .sample_path
+        .read()
+        .ok()
+        .and_then(|guard| {
+            guard.as_ref().and_then(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .map(String::from)
+            })
+        })
+        .unwrap_or_else(|| "No sample loaded".to_string())
+}
 
 pub fn create_editor(
     params: Arc<HardKickSamplerParams>,
@@ -16,23 +44,65 @@ pub fn create_editor(
         EguiState::from_size(800, 600),
         params.clone(),
         |_ctx, _params| {},
-        move |ctx, _setter, _state| {
+        move |ctx, _setter, params| {
+            // Get the current editor state
+            let mut current_tab = get_current_tab(ctx);
+            let sample_params = &params.samples[current_tab];
+
             // Enable drag and drop
-            ctx.input(|i| {
-                if !i.raw.dropped_files.is_empty() {
-                    for file in &i.raw.dropped_files {
-                        if let Some(path) = &file.path {
-                            async_executor.execute_background(TaskIn::LoadFile(0, path.clone()));
+            if let Some(file) = ctx.input(|i| i.raw.dropped_files.first().map(|f| f.path.clone())) {
+                let path = file.clone().unwrap_or(PathBuf::from(""));
+                async_executor.execute_background(TaskRequests::LoadFile(5, path));
+            }
+
+            CentralPanel::default().show(ctx, |ui| {
+                ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
+                    ui.add_space(SPACE_AMOUT);
+
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("Hard Kick Sampler").size(18.0).strong());
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            if ui.button("📁").clicked() {
+                                async_executor
+                                    .execute_background(TaskRequests::OpenFilePicker(current_tab));
+                            }
+                            if ui.button("Delete").clicked() {
+                                async_executor.execute_background(TaskRequests::TransfertTask(
+                                    TaskResults::ClearSample(current_tab),
+                                ));
+                            }
+                        });
+                    });
+
+                    ui.add_space(SPACE_AMOUT);
+
+                    // Tabs
+                    ui.horizontal(|ui| {
+                        for tab in 0..MAX_SAMPLES {
+                            if ui
+                                .selectable_label(
+                                    current_tab == tab,
+                                    "Sample ".to_string() + &(tab + 1).to_string(),
+                                )
+                                .clicked()
+                            {
+                                current_tab = tab;
+                            }
                         }
-                    }
-                }
+                    });
+
+                    ui.add_space(SPACE_AMOUT);
+
+                    // get sample path
+                    let path = get_sample_name(sample_params);
+
+                    // Show what is loaded
+                    ui.label(path);
+                })
             });
 
-            egui::CentralPanel::default().show(ctx, |ui| {
-                if ui.button("Click").clicked() {
-                    async_executor.execute_background(TaskIn::LoadFile(5, PathBuf::from(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Crunches\OPS_ECHKE1_CRUNCH_3_F.wav")));
-                }
-            });
+            // Insert data at the end
+            set_current_tab(ctx, current_tab);
         },
     )
 }
