@@ -7,10 +7,10 @@ use crate::tasks::AudioData;
 use crate::utils;
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
-const BASE_NOTE: u8 = 72;
+const BASE_NOTE: u8 = 60;
 
 /// Default sample rate used for initialization
-const DEFAULT_SAMPLE_RATE: f32 = 44100.;
+const DEFAULT_SAMPLE_RATE: f32 = 48000.;
 
 /// Number of semitone in one octave
 const SEMITONE_PER_OCTAVE: f32 = 12.;
@@ -179,6 +179,7 @@ impl SampleWrapper {
 
     pub fn clear_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.buffer = None;
+        self.sample_rate = 0;
         self.adsr.reset();
         match self.get_params().sample_path.write() {
             Ok(mut path) => *path = None,
