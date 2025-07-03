@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+mod widgets;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -44,7 +47,7 @@ pub fn create_editor(
         EguiState::from_size(800, 600),
         params.clone(),
         |_ctx, _params| {},
-        move |ctx, _setter, params| {
+        move |ctx, setter, params| {
             // Get the current editor state
             let mut current_tab = get_current_tab(ctx);
             let sample_params = &params.samples[current_tab];
@@ -80,10 +83,7 @@ pub fn create_editor(
                     ui.horizontal(|ui| {
                         for tab in 0..MAX_SAMPLES {
                             if ui
-                                .selectable_label(
-                                    current_tab == tab,
-                                    "Sample ".to_string() + &(tab + 1).to_string(),
-                                )
+                                .selectable_label(current_tab == tab, format!("Sample {}", tab + 1))
                                 .clicked()
                             {
                                 current_tab = tab;
@@ -93,11 +93,33 @@ pub fn create_editor(
 
                     ui.add_space(SPACE_AMOUT);
 
-                    // get sample path
-                    let path = get_sample_name(sample_params);
+                    // Some params
+                    ui.horizontal(|ui| {
+                        widgets::create_toggle_button(ui, &sample_params.muted, setter);
+                    });
+
+                    ui.add_space(SPACE_AMOUT);
+
+                    ui.label("ADSR");
+                    ui.horizontal(|ui| {
+                        let orientation = SliderOrientation::Vertical;
+                        widgets::create_slider(ui, &sample_params.attack, setter, orientation);
+                        widgets::create_slider(ui, &sample_params.decay, setter, orientation);
+                        widgets::create_slider(ui, &sample_params.sustain, setter, orientation);
+                        widgets::create_slider(ui, &sample_params.release, setter, orientation);
+                    });
+
+                    ui.add_space(SPACE_AMOUT);
+
+                    ui.horizontal(|ui| {
+                        widgets::create_toggle_button(ui, &sample_params.is_tonal, setter);
+                        if sample_params.is_tonal.value() {
+                            widgets::create_combo_box(ui, &sample_params.root_note, setter);
+                        }
+                    });
 
                     // Show what is loaded
-                    ui.label(path);
+                    ui.label(get_sample_name(sample_params));
                 })
             });
 

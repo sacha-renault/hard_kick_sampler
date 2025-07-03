@@ -7,7 +7,7 @@ use crate::tasks::AudioData;
 use crate::utils;
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
-const BASE_NOTE: u8 = 60;
+const BASE_NOTE: u8 = 72;
 
 /// Default sample rate used for initialization
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;

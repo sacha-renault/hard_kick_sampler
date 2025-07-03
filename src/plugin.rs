@@ -234,6 +234,7 @@ impl Plugin for HardKickSampler {
                     }
                 }
             }
+            _ => {}
         })
     }
 }
