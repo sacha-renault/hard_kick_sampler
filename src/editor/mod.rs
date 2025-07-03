@@ -11,6 +11,7 @@ use nih_plug_egui::{create_egui_editor, EguiState};
 use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::tasks::{TaskRequests, TaskResults};
+use crate::utils;
 
 const SPACE_AMOUT: f32 = 15_f32;
 
@@ -24,19 +25,22 @@ fn set_current_tab(ctx: &Context, current_tab: usize) {
     });
 }
 
-fn get_sample_name(sample_params: &SampleWrapperParams) -> String {
-    sample_params
-        .sample_path
-        .read()
-        .ok()
-        .and_then(|guard| {
-            guard.as_ref().and_then(|path| {
-                path.file_name()
-                    .and_then(|name| name.to_str())
-                    .map(String::from)
-            })
+fn get_sample_name(sample_params: &SampleWrapperParams) -> Option<String> {
+    sample_params.sample_path.read().ok().and_then(|guard| {
+        guard.as_ref().and_then(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .map(String::from)
         })
-        .unwrap_or_else(|| "No sample loaded".to_string())
+    })
+}
+
+fn get_sample_path(sample_params: &SampleWrapperParams) -> Option<String> {
+    sample_params.sample_path.read().ok().and_then(|guard| {
+        guard
+            .as_ref()
+            .and_then(|path| path.to_str().map(String::from))
+    })
 }
 
 pub fn create_editor(
@@ -51,6 +55,8 @@ pub fn create_editor(
             // Get the current editor state
             let mut current_tab = get_current_tab(ctx);
             let sample_params = &params.samples[current_tab];
+            let current_file_name = get_sample_name(sample_params);
+            let current_file_path = get_sample_path(sample_params);
 
             // Enable drag and drop
             if let Some(file) = ctx.input(|i| i.raw.dropped_files.first().map(|f| f.path.clone())) {
@@ -73,6 +79,28 @@ pub fn create_editor(
                                 async_executor.execute_background(TaskRequests::TransfertTask(
                                     TaskResults::ClearSample(current_tab),
                                 ));
+                            }
+
+                            if ui
+                                .add_enabled(current_file_path.is_some(), Button::new(">"))
+                                .clicked()
+                            {
+                                if let Some(file) = &current_file_path {
+                                    async_executor.execute_background(TaskRequests::LoadNextFile(
+                                        current_tab,
+                                        file.clone(),
+                                    ));
+                                }
+                            }
+                            if ui
+                                .add_enabled(current_file_path.is_some(), Button::new("<"))
+                                .clicked()
+                            {
+                                if let Some(file) = &current_file_path {
+                                    async_executor.execute_background(
+                                        TaskRequests::LoadPreviousFile(current_tab, file.clone()),
+                                    );
+                                }
                             }
                         });
                     });
@@ -121,13 +149,22 @@ pub fn create_editor(
                     ui.add_space(SPACE_AMOUT);
 
                     // Add a semitone slider
-                    ui.label(format!(
-                        "Semitone offset : {}",
-                        sample_params.semitone_offset.value()
-                    ));
+                    widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
+
+                    ui.add_space(SPACE_AMOUT);
 
                     // Show what is loaded
-                    ui.label(get_sample_name(sample_params));
+                    ui.label(current_file_name.clone().unwrap_or_default());
+
+                    ui.add_space(SPACE_AMOUT);
+
+                    // Finally, the output gain
+                    widgets::create_slider(
+                        ui,
+                        &sample_params.gain,
+                        setter,
+                        SliderOrientation::Horizontal,
+                    );
                 })
             });
 

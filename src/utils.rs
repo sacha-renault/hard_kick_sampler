@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use nih_plug::prelude::{Smoothable, Smoother};
 
@@ -76,4 +76,65 @@ pub fn semitones_to_note(mut semi: i32) -> String {
     };
 
     String::from(value)
+}
+
+fn get_sorted_files_in_directory(file_path: &str) -> Option<Vec<PathBuf>> {
+    let path = Path::new(file_path);
+    let parent = path.parent()?;
+
+    // Read directory entries and collect files
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(parent)
+        .ok()?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file())
+        .collect();
+
+    // Sort entries for consistent ordering
+    entries.sort();
+
+    Some(entries)
+}
+
+pub fn get_next_file_in_directory_wrap(file_path: &str) -> Option<PathBuf> {
+    let path = Path::new(file_path);
+    let current_filename = path.file_name()?;
+
+    let entries = get_sorted_files_in_directory(file_path)?;
+
+    if entries.is_empty() {
+        return None;
+    }
+
+    let current_index = entries
+        .iter()
+        .position(|p| p.file_name() == Some(current_filename))?;
+
+    // Wrap around to first if at end
+    let next_index = (current_index + 1) % entries.len();
+    Some(entries[next_index].clone())
+}
+
+pub fn get_previous_file_in_directory_wrap(file_path: &str) -> Option<PathBuf> {
+    let path = Path::new(file_path);
+    let current_filename = path.file_name()?;
+
+    let entries = get_sorted_files_in_directory(file_path)?;
+
+    if entries.is_empty() {
+        return None;
+    }
+
+    let current_index = entries
+        .iter()
+        .position(|p| p.file_name() == Some(current_filename))?;
+
+    // Wrap around to last if at beginning
+    let prev_index = if current_index == 0 {
+        entries.len() - 1
+    } else {
+        current_index - 1
+    };
+
+    Some(entries[prev_index].clone())
 }

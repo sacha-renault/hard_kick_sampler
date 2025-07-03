@@ -34,7 +34,7 @@ pub struct SampleWrapper {
     buffer: Option<Vec<f32>>,
 
     /// The target sample rate (i.e. the sample rate of the host)
-    target_sample_rate: f32,
+    host_sample_rate: f32,
 
     /// Sample rate of the sample itself, not the process sr
     sample_rate: u32,
@@ -83,7 +83,7 @@ impl SampleWrapper {
             buffer: None,
             playback_position: 0.,
             sample_rate: 0,
-            target_sample_rate: DEFAULT_SAMPLE_RATE,
+            host_sample_rate: DEFAULT_SAMPLE_RATE,
             midi_note: None,
             num_channel: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
@@ -132,7 +132,7 @@ impl SampleWrapper {
     ///
     /// * `sample_rate` - New target sample rate in Hz
     pub fn change_sample_rate_output(&mut self, sample_rate: f32) {
-        self.target_sample_rate = sample_rate;
+        self.host_sample_rate = sample_rate;
         self.adsr.set_sample_rate(sample_rate);
     }
 
@@ -242,8 +242,7 @@ impl SampleWrapper {
 
         let final_offset = midi_note_offset + param_note_offset - root_note;
         let playback_rate = 2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE);
-        self.playback_position +=
-            playback_rate * (self.sample_rate as f32 / self.target_sample_rate);
+        self.playback_position += playback_rate * (self.sample_rate as f32 / self.host_sample_rate);
     }
 
     /// Completely resets and clears the sample wrapper.
