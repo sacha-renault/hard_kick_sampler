@@ -7,13 +7,13 @@ use crate::tasks::AudioData;
 use crate::utils;
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
-const BASE_NOTE: u8 = 72;
+const BASE_NOTE: u8 = 75;
 
 /// Default sample rate used for initialization
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
 /// Number of semitone in one octave
-const SEMINTONE_PER_OCTAVE: f32 = 12.;
+const SEMITONE_PER_OCTAVE: f32 = 12.;
 
 /// A multi-channel audio sample player with pitch shifting, ADSR envelope, and real-time parameter control.
 ///
@@ -227,15 +227,21 @@ impl SampleWrapper {
     /// If `is_tonal` parameter is false, MIDI note has no influence on pitch.
     #[inline]
     pub fn increment_playback_position(&mut self) {
-        let param_note_offset =
-            self.get_params().semitone_offset.value() + self.get_params().root_note.value();
+        // Parameter offset (user tuning adjustment)
+        let param_note_offset = self.get_params().semitone_offset.value() as f32;
+
+        // MIDI note offset from root note
         let midi_note_offset = if self.get_params().is_tonal.value() {
-            self.midi_note.unwrap_or(0)
+            self.midi_note.unwrap_or(0) as f32
         } else {
-            0
+            0.
         };
-        let playback_rate = 2.0_f32
-            .powf((midi_note_offset + param_note_offset as i8) as f32 / SEMINTONE_PER_OCTAVE);
+
+        // Get root note
+        let root_note = self.get_params().root_note.value() as f32;
+
+        let final_offset = midi_note_offset + param_note_offset - root_note;
+        let playback_rate = 2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE);
         self.playback_position +=
             playback_rate * (self.target_sample_rate / self.sample_rate as f32);
     }
