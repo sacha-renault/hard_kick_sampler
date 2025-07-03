@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SampleWrapperParams};
+use crate::tasks::AudioData;
 use crate::utils;
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
@@ -151,6 +152,7 @@ impl SampleWrapper {
     /// # Arguments
     ///
     /// * `file_path` - Path to the audio file to load
+    /// * `audio_data` - data of the loaded audio
     ///
     /// # Returns
     ///
@@ -159,13 +161,11 @@ impl SampleWrapper {
     pub fn load_and_set_audio_file(
         &mut self,
         file_path: &Path,
+        audio_data: AudioData,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        // load audio
-        let audio = utils::load_audio_file(file_path)?;
-
         // Set the buffer and sample rate
-        self.sample_rate = audio.0;
-        self.buffer = Some(audio.1);
+        self.sample_rate = audio_data.spec.sample_rate;
+        self.buffer = Some(audio_data.data);
 
         // If buffer is loaded, we set the sample path
         match self.get_params().sample_path.write() {
@@ -200,8 +200,8 @@ impl SampleWrapper {
         let audio = utils::load_audio_file(&file_path)?;
 
         // Set the buffer and sample rate
-        self.sample_rate = audio.0;
-        self.buffer = Some(audio.1);
+        self.sample_rate = audio.spec.sample_rate;
+        self.buffer = Some(audio.data);
         Ok(())
     }
 

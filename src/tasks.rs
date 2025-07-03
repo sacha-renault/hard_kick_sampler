@@ -1,26 +1,19 @@
 use std::path::PathBuf;
 
-use derive_more::Constructor;
+use derive_more::{Constructor, From, Into};
+use hound::WavSpec;
 
-#[derive(Debug, Constructor)]
-pub struct FileWithIndex {
-    pub path: PathBuf,
-    pub index: usize,
-}
-
-#[derive(Debug, Constructor)]
-pub struct LoadedFileWithIndex {
-    pub path: PathBuf,
-    pub index: usize,
+#[derive(Debug, Constructor, Into, From)]
+pub struct AudioData {
+    pub spec: WavSpec,
     pub data: Vec<f32>,
-    pub spec: f32,
 }
 
 #[derive(Debug)]
 pub enum TaskIn {
-    LoadAudioFile(FileWithIndex),
+    LoadAudioFile(usize, PathBuf),
 }
 
 pub enum TaskOut {
-    LoadedFile(LoadedFileWithIndex),
+    LoadedFile(usize, PathBuf, AudioData),
 }

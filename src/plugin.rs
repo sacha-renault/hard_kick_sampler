@@ -1,12 +1,12 @@
 use nih_plug::prelude::*;
-use nih_plug_iced::IcedState;
 use std::num::NonZero;
 use std::sync::Arc;
 
-use crate::editor;
+use crate::editor::create_editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
 use crate::sample_wrapper::SampleWrapper;
-use crate::tasks::{self, TaskIn, TaskOut};
+use crate::tasks::{TaskIn, TaskOut};
+use crate::utils;
 
 pub struct HardKickSampler {
     // Params of the plugin
@@ -69,17 +69,20 @@ impl HardKickSampler {
     }
 
     fn handle_messages(&mut self) {
-        if let Some(receiver) = &self.receiver {
-            while let Ok(task) = receiver.try_recv() {
-                match task {
-                    TaskOut::LoadedFile(file_data) => {
-                        self.sample_wrappers.get_mut(file_data.index).map(|sample| {
-                            // Use a function to set the sample !
-                            //sample.set_sample(file_data)
-                        })
-                    }
-                };
-            }
+        // Get the receiver
+        let receiver = match &self.receiver {
+            Some(receiver) => receiver,
+            None => return,
+        };
+
+        // Handle events
+        while let Ok(task) = receiver.try_recv() {
+            match task {
+                TaskOut::LoadedFile(index, path, data) => self
+                    .sample_wrappers
+                    .get_mut(index)
+                    .map(|sample| sample.load_and_set_audio_file(&path, data)),
+            };
         }
     }
 }
@@ -196,8 +199,8 @@ impl Plugin for HardKickSampler {
         ProcessStatus::Normal
     }
 
-    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        editor::create(IcedState::from_size(800, 600), self.params.clone())
+    fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        create_editor(self.params.clone(), async_executor)
     }
 
     fn task_executor(&mut self) -> TaskExecutor<Self> {
@@ -205,9 +208,11 @@ impl Plugin for HardKickSampler {
         self.receiver = Some(receiver);
 
         Box::new(move |task| match task {
-            TaskIn::LoadAudioFile(file) => {
+            TaskIn::LoadAudioFile(index, path) => {
                 // Actually load the file
-                // sender.send(...)
+                if let Ok(audio_data) = utils::load_audio_file(&path) {
+                    let _ = sender.send(TaskOut::LoadedFile(index, path, audio_data));
+                }
             }
         })
     }

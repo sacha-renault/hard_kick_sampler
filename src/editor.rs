@@ -1,51 +1,27 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use nih_plug::prelude::*;
-use nih_plug_iced::*;
+use nih_plug::{editor::Editor, prelude::AsyncExecutor};
+use nih_plug_egui::{create_egui_editor, EguiState};
 
 use crate::params::HardKickSamplerParams;
+use crate::plugin::HardKickSampler;
+use crate::tasks::TaskIn;
 
-pub fn create(
-    editor_state: Arc<IcedState>,
+pub fn create_editor(
     params: Arc<HardKickSamplerParams>,
+    async_executor: AsyncExecutor<HardKickSampler>,
 ) -> Option<Box<dyn Editor>> {
-    create_iced_editor::<HardKickSamplerEditor>(editor_state, params)
-}
-
-pub struct HardKickSamplerEditor {
-    params: Arc<HardKickSamplerParams>,
-    context: Arc<dyn GuiContext>,
-}
-
-impl IcedEditor for HardKickSamplerEditor {
-    type Executor = executor::Default;
-    type Message = ();
-    type InitializationFlags = Arc<HardKickSamplerParams>;
-
-    fn new(
-        initialization_fags: Self::InitializationFlags,
-        context: Arc<dyn GuiContext>,
-    ) -> (Self, Command<Self::Message>) {
-        let editor = Self {
-            params: initialization_fags,
-            context,
-        };
-        (editor, Command::none())
-    }
-
-    fn context(&self) -> &dyn GuiContext {
-        self.context.as_ref()
-    }
-
-    fn update(
-        &mut self,
-        _window: &mut WindowQueue,
-        _message: Self::Message,
-    ) -> Command<Self::Message> {
-        Command::none()
-    }
-
-    fn view(&mut self) -> Element<'_, Self::Message> {
-        Column::new().into()
-    }
+    create_egui_editor(
+        EguiState::from_size(800, 600),
+        params.clone(),
+        |_ctx, _params| {},
+        move |ctx, _setter, _state| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                if ui.button("Click").clicked() {
+                    async_executor.execute_background(TaskIn::LoadAudioFile(5, PathBuf::from(r"C:\Program Files\Image-Line\FL Studio 21\Data\Patches\Packs\Custom pack\OPS\OPS - Euphoric Hardstyle Kick Expansion (Vol. 1)\Kick Build Folder\Crunches\OPS_ECHKE1_CRUNCH_3_F.wav")));
+                }
+            });
+        },
+    )
 }
