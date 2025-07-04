@@ -35,6 +35,7 @@ pub fn create_slider(
     param: &FloatParam,
     setter: &ParamSetter,
     orientation: SliderOrientation,
+    scroll_step: f32,
 ) -> Response {
     let ui_closure = |ui: &mut Ui| {
         ui.label(param.name());
@@ -55,6 +56,15 @@ pub fn create_slider(
             && ui.input(|i| i.pointer.button_double_clicked(PointerButton::Primary))
         {
             setter.set_parameter(param, param.default_plain_value());
+        }
+
+        if response.hovered() {
+            let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+            if scroll_delta > 0.0 {
+                setter.set_parameter_normalized(param, value + scroll_step);
+            } else if scroll_delta < 0.0 {
+                setter.set_parameter_normalized(param, value - scroll_step);
+            }
         }
 
         // Show formatted value
@@ -138,6 +148,15 @@ pub fn create_integer_input(ui: &mut Ui, param: &IntParam, setter: &ParamSetter)
 
     if response.drag_stopped() || !ui.input(|i| i.pointer.any_down()) {
         drag_state.is_dragging = false;
+    }
+
+    if response.hovered() {
+        let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+        if scroll_delta > 0.0 {
+            setter.set_parameter(param, current_value + 1);
+        } else if scroll_delta < 0.0 {
+            setter.set_parameter(param, current_value - 1);
+        }
     }
 
     // Visual styling

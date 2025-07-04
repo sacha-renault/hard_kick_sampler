@@ -55,19 +55,6 @@ fn handle_file_drop(
     }
 }
 
-// fn render_file_controls(
-//     ui: &mut egui::Ui,
-//     async_executor: &AsyncExecutor<HardKickSampler>,
-//     params: &HardKickSamplerParams,
-//     current_tab: usize,
-// ) {
-//     ui.horizontal(|ui| {
-//         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-//             render_header_buttons(ui, async_executor, params, current_tab);
-//         });
-//     });
-// }
-
 fn render_file_controls(
     ui: &mut egui::Ui,
     async_executor: &AsyncExecutor<HardKickSampler>,
@@ -179,10 +166,10 @@ fn render_adsr_controls(
     ui.label("ADSR");
     ui.horizontal(|ui| {
         let orientation = SliderOrientation::Vertical;
-        widgets::create_slider(ui, &sample_params.attack, setter, orientation);
-        widgets::create_slider(ui, &sample_params.decay, setter, orientation);
-        widgets::create_slider(ui, &sample_params.sustain, setter, orientation);
-        widgets::create_slider(ui, &sample_params.release, setter, orientation);
+        widgets::create_slider(ui, &sample_params.attack, setter, orientation, 0.1);
+        widgets::create_slider(ui, &sample_params.decay, setter, orientation, 0.1);
+        widgets::create_slider(ui, &sample_params.sustain, setter, orientation, 0.1);
+        widgets::create_slider(ui, &sample_params.release, setter, orientation, 0.1);
     });
 }
 
@@ -217,6 +204,7 @@ fn render_gain_control(
         &sample_params.gain,
         setter,
         SliderOrientation::Horizontal,
+        0.025,
     );
 }
 
