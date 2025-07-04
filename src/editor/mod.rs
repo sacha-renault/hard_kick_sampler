@@ -247,7 +247,7 @@ fn render_sample_info_strip(
     );
 }
 
-fn render_waveform_display(ui: &mut Ui) {
+fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
     let available_height = ui.available_height() - theme::PANEL_SPACING;
     let rect = ui
         .allocate_response(
@@ -271,14 +271,93 @@ fn render_waveform_display(ui: &mut Ui) {
         StrokeKind::Inside,
     );
 
-    // Add placeholder text
-    ui.painter().text(
-        rect.center(),
-        Align2::CENTER_CENTER,
-        "Waveform Display",
-        theme::FONT_LARGE,
-        theme::TEXT_COLOR_DISABLED,
-    );
+    match waveform_data {
+        Some(data) if !data.is_empty() => {
+            // Assume stereo interleaved data (L, R, L, R, ...)
+            let channels = 2;
+            let samples_per_channel = data.len() / channels;
+
+            // Calculate drawing parameters
+            let inner_rect = rect.shrink(theme::PANEL_SPACING);
+            let channel_height = inner_rect.height() / channels as f32;
+            let sample_width = inner_rect.width() / samples_per_channel as f32;
+
+            // Draw each channel
+            for channel in 0..channels {
+                let channel_rect = Rect::from_min_size(
+                    Pos2::new(
+                        inner_rect.min.x,
+                        inner_rect.min.y + channel as f32 * channel_height,
+                    ),
+                    Vec2::new(inner_rect.width(), channel_height),
+                );
+
+                let center_y = channel_rect.center().y;
+                let amplitude_scale = channel_height * 0.4; // Use 40% of channel height
+
+                // Draw center line
+                ui.painter().line_segment(
+                    [
+                        Pos2::new(channel_rect.min.x, center_y),
+                        Pos2::new(channel_rect.max.x, center_y),
+                    ],
+                    Stroke::new(1.0, Color32::from_gray(60)),
+                );
+
+                // Draw waveform
+                let mut points = Vec::new();
+                for i in 0..samples_per_channel {
+                    let sample_index = i * channels + channel;
+                    if sample_index < data.len() {
+                        let sample = data[sample_index].clamp(-1.0, 1.0);
+                        let x = inner_rect.min.x + i as f32 * sample_width;
+                        let y = center_y - sample * amplitude_scale;
+                        points.push(Pos2::new(x, y));
+                    }
+                }
+
+                // Draw the waveform line
+                if points.len() > 1 {
+                    for window in points.windows(2) {
+                        ui.painter().line_segment(
+                            [window[0], window[1]],
+                            Stroke::new(
+                                1.5,
+                                if channel == 0 {
+                                    Color32::LIGHT_BLUE
+                                } else {
+                                    Color32::LIGHT_RED
+                                },
+                            ),
+                        );
+                    }
+                }
+
+                // Channel label
+                ui.painter().text(
+                    Pos2::new(channel_rect.min.x + 5.0, channel_rect.min.y + 5.0),
+                    Align2::LEFT_TOP,
+                    if channel == 0 { "L" } else { "R" },
+                    theme::FONT_SMALL,
+                    if channel == 0 {
+                        Color32::LIGHT_BLUE
+                    } else {
+                        Color32::LIGHT_RED
+                    },
+                );
+            }
+        }
+        _ => {
+            // Add placeholder text when no data
+            ui.painter().text(
+                rect.center(),
+                Align2::CENTER_CENTER,
+                "No Waveform Data",
+                theme::FONT_LARGE,
+                theme::TEXT_COLOR_DISABLED,
+            );
+        }
+    }
 }
 
 fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
@@ -337,12 +416,8 @@ pub fn create_editor(
                     ui.add_space(8.0);
 
                     // Waveform display takes remaining space
-                    let _ = match states.wave_readers[current_tab].read() {
-                        Ok(data) => Some(data),
-                        Err(_) => None,
-                    }; // Can now use data to render the wave ! :)
-
-                    render_waveform_display(ui);
+                    let waveform_data = states.wave_readers[current_tab].read().ok();
+                    render_waveform_display(ui, waveform_data.as_deref());
                 });
             });
 
