@@ -1,7 +1,8 @@
 #[allow(dead_code)]
+mod theme;
+#[allow(dead_code)]
 mod widgets;
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use egui::*;
@@ -12,8 +13,6 @@ use nih_plug_egui::{create_egui_editor, EguiState};
 use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::tasks::{TaskRequests, TaskResults};
-
-const SPACE_AMOUT: f32 = 15_f32;
 
 fn get_current_tab(ctx: &Context) -> usize {
     ctx.data(|data| data.get_temp::<usize>(Id::new("tab")).clone().unwrap_or(0))
@@ -55,64 +54,228 @@ fn handle_file_drop(
     }
 }
 
-fn render_file_controls(
-    ui: &mut egui::Ui,
+fn render_panel<R>(
+    ui: &mut Ui,
+    title: &str,
+    add_contents: impl FnOnce(&mut Ui) -> R,
+) -> InnerResponse<R> {
+    Frame::new()
+        .fill(theme::BACKGROUND_COLOR)
+        .stroke(Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR))
+        .corner_radius(theme::STANDARD_ROUNDING)
+        .inner_margin(Margin::same(theme::PANEL_PADDING as i8))
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.label(
+                    RichText::new(title)
+                        .strong()
+                        .color(theme::TEXT_COLOR_ACCENT),
+                );
+                ui.add_space(4.0);
+                add_contents(ui)
+            })
+            .inner
+        })
+}
+
+fn render_adsr_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
+    render_panel(ui, "ADSR", |ui| {
+        ui.horizontal(|ui| {
+            let orientation = SliderOrientation::Vertical;
+            widgets::create_slider(ui, &sample_params.attack, setter, orientation, 0.1);
+            widgets::create_slider(ui, &sample_params.decay, setter, orientation, 0.1);
+            widgets::create_slider(ui, &sample_params.sustain, setter, orientation, 0.1);
+            widgets::create_slider(ui, &sample_params.release, setter, orientation, 0.1);
+        });
+    });
+}
+
+fn render_tonal_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
+    render_panel(ui, "Tonal", |ui| {
+        ui.vertical(|ui| {
+            widgets::create_checkbox(ui, &sample_params.is_tonal, setter);
+
+            // We don't need the thing to be tonal, we just disable root
+            // note when the value isn't checked
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Note:");
+                widgets::create_combo_box(
+                    ui,
+                    &sample_params.root_note,
+                    setter,
+                    sample_params.is_tonal.value(),
+                );
+            });
+
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.label("Semi:");
+                widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
+            });
+        });
+    });
+}
+
+fn render_gain_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
+    render_panel(ui, "Gain", |ui| {
+        // Vertical gain slider to save space
+        widgets::create_slider(
+            ui,
+            &sample_params.gain,
+            setter,
+            SliderOrientation::Vertical,
+            0.025,
+        );
+    });
+}
+
+fn render_control_panels(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
+    ui.vertical(|ui| {
+        // Tonal Panel - full width at top
+        render_tonal_panel(ui, sample_params, setter);
+
+        ui.add_space(theme::PANEL_SPACING);
+
+        // ADSR and Gain panels - horizontal layout below
+        ui.horizontal_top(|ui| {
+            // Use horizontal_top for top alignment
+            // ADSR Panel - 80% width
+            let available_width = ui.available_width() - theme::PANEL_SPACING;
+            let panel_height = 120.0;
+            let adsr_width = available_width * 0.8;
+
+            ui.allocate_ui_with_layout(
+                Vec2::new(adsr_width, panel_height),
+                Layout::top_down(Align::LEFT),
+                |ui| {
+                    ui.set_min_size(Vec2::new(adsr_width, panel_height));
+                    render_adsr_panel(ui, sample_params, setter)
+                },
+            );
+
+            ui.add_space(theme::PANEL_SPACING);
+
+            // Gain Panel - 20% width
+            let gain_width = available_width * 0.2;
+            ui.allocate_ui_with_layout(
+                Vec2::new(gain_width, panel_height),
+                Layout::top_down(Align::LEFT),
+                |ui| {
+                    ui.set_min_size(Vec2::new(gain_width, panel_height));
+                    render_gain_panel(ui, sample_params, setter)
+                },
+            );
+        });
+    });
+}
+
+fn render_sample_info_strip(
+    ui: &mut Ui,
     async_executor: &AsyncExecutor<HardKickSampler>,
     params: &HardKickSamplerParams,
     current_tab: usize,
+    setter: &ParamSetter,
 ) {
-    let current_file_path = get_sample_path(&params.samples[current_tab]);
-    let current_file_name = get_sample_name(&params.samples[current_tab]);
+    let sample_params = &params.samples[current_tab];
+    let current_file_path = get_sample_path(sample_params);
+    let current_file_name = get_sample_name(sample_params);
 
-    ui.horizontal(|ui| {
-        // Label on the left
-        ui.label(current_file_name.clone().unwrap_or_default());
+    Frame::new()
+        .fill(theme::BACKGROUND_COLOR_FOCUSED)
+        .stroke(Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR))
+        .corner_radius(theme::SMALL_ROUNDING)
+        .inner_margin(Margin::same(6))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                // Mute checkbox on the left
+                widgets::create_checkbox(ui, &sample_params.muted, setter);
 
-        // Push buttons to the right
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.button("📁").clicked() {
-                async_executor.execute_background(TaskRequests::OpenFilePicker(current_tab));
-            }
+                ui.add_space(10.0);
 
-            if ui
-                .add_enabled(current_file_name.clone().is_some(), Button::new("Delete"))
-                .clicked()
-            {
-                async_executor.execute_background(TaskRequests::TransfertTask(
-                    TaskResults::ClearSample(current_tab),
-                ));
-            }
+                // Sample name
+                ui.label(
+                    RichText::new(current_file_name.unwrap_or("No sample loaded".to_string()))
+                        .color(theme::TEXT_COLOR),
+                );
 
-            if ui
-                .add_enabled(current_file_path.is_some(), Button::new(">"))
-                .clicked()
-            {
-                if let Some(file) = current_file_path.clone() {
-                    async_executor
-                        .execute_background(TaskRequests::LoadNextFile(current_tab, file.clone()));
-                }
-            }
+                // Push file controls to the right
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if ui.button("Delete").clicked() {
+                        async_executor.execute_background(TaskRequests::TransfertTask(
+                            TaskResults::ClearSample(current_tab),
+                        ));
+                    }
 
-            if ui
-                .add_enabled(current_file_path.is_some(), Button::new("<"))
-                .clicked()
-            {
-                if let Some(file) = current_file_path {
-                    async_executor.execute_background(TaskRequests::LoadPreviousFile(
-                        current_tab,
-                        file.clone(),
-                    ));
-                }
-            }
+                    if ui
+                        .add_enabled(current_file_path.is_some(), Button::new(">"))
+                        .clicked()
+                    {
+                        if let Some(file) = current_file_path.clone() {
+                            async_executor.execute_background(TaskRequests::LoadNextFile(
+                                current_tab,
+                                file.clone(),
+                            ));
+                        }
+                    }
+
+                    if ui
+                        .add_enabled(current_file_path.is_some(), Button::new("<"))
+                        .clicked()
+                    {
+                        if let Some(file) = current_file_path {
+                            async_executor.execute_background(TaskRequests::LoadPreviousFile(
+                                current_tab,
+                                file.clone(),
+                            ));
+                        }
+                    }
+
+                    if ui.button("📁").clicked() {
+                        async_executor
+                            .execute_background(TaskRequests::OpenFilePicker(current_tab));
+                    }
+                });
+            });
         });
-    });
+}
+
+fn render_waveform_display(ui: &mut Ui) {
+    let available_height = ui.available_height() - 20.0; // Leave some margin
+    let rect = ui
+        .allocate_response(
+            Vec2::new(ui.available_width(), available_height.max(150.0)),
+            Sense::hover(),
+        )
+        .rect;
+
+    // Draw waveform background
+    ui.painter()
+        .rect_filled(rect, theme::STANDARD_ROUNDING, Color32::from_gray(25));
+
+    // Draw border
+    ui.painter().rect_stroke(
+        rect,
+        theme::STANDARD_ROUNDING,
+        Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR),
+        StrokeKind::Inside,
+    );
+
+    // Add placeholder text
+    ui.painter().text(
+        rect.center(),
+        Align2::CENTER_CENTER,
+        "Waveform Display",
+        theme::FONT_LARGE,
+        theme::TEXT_COLOR_DISABLED,
+    );
 }
 
 fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
     let mut new_tab = current_tab;
 
     ui.horizontal(|ui| {
-        for tab in 0..MAX_SAMPLES {
+        for tab in (0..MAX_SAMPLES).rev() {
             if ui
                 .selectable_label(current_tab == tab, format!("Sample {}", tab + 1))
                 .clicked()
@@ -123,89 +286,6 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
     });
 
     new_tab
-}
-
-fn render_sample_controls(
-    ui: &mut egui::Ui,
-    params: &HardKickSamplerParams,
-    current_tab: usize,
-    setter: &ParamSetter,
-) {
-    let sample_params = &params.samples[current_tab];
-
-    render_mute_control(ui, sample_params, setter);
-    ui.add_space(SPACE_AMOUT);
-
-    render_adsr_controls(ui, sample_params, setter);
-    ui.add_space(SPACE_AMOUT);
-
-    render_tonal_controls(ui, sample_params, setter);
-    ui.add_space(SPACE_AMOUT);
-
-    render_semitone_control(ui, sample_params, setter);
-    ui.add_space(SPACE_AMOUT);
-
-    render_gain_control(ui, sample_params, setter);
-}
-
-fn render_mute_control(
-    ui: &mut egui::Ui,
-    sample_params: &SampleWrapperParams,
-    setter: &ParamSetter,
-) {
-    ui.horizontal(|ui| {
-        widgets::create_checkbox(ui, &sample_params.muted, setter);
-    });
-}
-
-fn render_adsr_controls(
-    ui: &mut egui::Ui,
-    sample_params: &SampleWrapperParams,
-    setter: &ParamSetter,
-) {
-    ui.label("ADSR");
-    ui.horizontal(|ui| {
-        let orientation = SliderOrientation::Vertical;
-        widgets::create_slider(ui, &sample_params.attack, setter, orientation, 0.1);
-        widgets::create_slider(ui, &sample_params.decay, setter, orientation, 0.1);
-        widgets::create_slider(ui, &sample_params.sustain, setter, orientation, 0.1);
-        widgets::create_slider(ui, &sample_params.release, setter, orientation, 0.1);
-    });
-}
-
-fn render_tonal_controls(
-    ui: &mut egui::Ui,
-    sample_params: &SampleWrapperParams,
-    setter: &ParamSetter,
-) {
-    ui.horizontal(|ui| {
-        widgets::create_checkbox(ui, &sample_params.is_tonal, setter);
-        if sample_params.is_tonal.value() {
-            widgets::create_combo_box(ui, &sample_params.root_note, setter);
-        }
-    });
-}
-
-fn render_semitone_control(
-    ui: &mut egui::Ui,
-    sample_params: &SampleWrapperParams,
-    setter: &ParamSetter,
-) {
-    widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
-}
-
-fn render_gain_control(
-    ui: &mut egui::Ui,
-    sample_params: &SampleWrapperParams,
-    setter: &ParamSetter,
-) {
-    widgets::create_slider(
-        ui,
-        &sample_params.gain,
-        setter,
-        SliderOrientation::Horizontal,
-        0.025,
-    );
 }
 
 pub fn create_editor(
@@ -220,51 +300,34 @@ pub fn create_editor(
             let mut current_tab = get_current_tab(ctx);
 
             handle_file_drop(ctx, &async_executor, current_tab);
+            theme::apply_theme(ctx);
 
             CentralPanel::default().show(ctx, |ui| {
-                ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                    ui.label(RichText::new("Hard Kick Sampler").size(36.0).strong());
-                    ui.add_space(SPACE_AMOUT);
+                ui.vertical(|ui| {
+                    // Header with title and tabs
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("Hard Kick Sampler").size(24.0).strong());
 
-                    current_tab = render_tabs(ui, current_tab);
-                    ui.add_space(SPACE_AMOUT);
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            current_tab = render_tabs(ui, current_tab);
+                        });
+                    });
 
-                    render_sample_controls(ui, params, current_tab, setter);
+                    ui.add_space(theme::SPACE_AMOUNT);
 
-                    // Simple waveform placeholder at the bottom
-                    ui.add_space(SPACE_AMOUT);
-                    render_file_controls(ui, &async_executor, params, current_tab);
-                    let rect = ui
-                        .allocate_response(
-                            egui::Vec2::new(ui.available_width(), 150.0),
-                            Sense::hover(),
-                        )
-                        .rect;
+                    // Control panels in the middle
+                    render_control_panels(ui, &params.samples[current_tab], setter);
 
-                    // Draw a simple rectangle
-                    ui.painter().rect_filled(
-                        rect,
-                        CornerRadius::same(4),
-                        egui::Color32::from_gray(30),
-                    );
+                    ui.add_space(theme::SPACE_AMOUNT);
 
-                    // Draw border
-                    ui.painter().rect_stroke(
-                        rect,
-                        CornerRadius::same(4),
-                        egui::Stroke::new(1.0, egui::Color32::from_gray(100)),
-                        StrokeKind::Middle,
-                    );
+                    // Sample info strip above waveform
+                    render_sample_info_strip(ui, &async_executor, params, current_tab, setter);
 
-                    // Add placeholder text
-                    ui.painter().text(
-                        rect.center(),
-                        egui::Align2::CENTER_CENTER,
-                        "Waveform will go here",
-                        egui::FontId::proportional(16.0),
-                        egui::Color32::from_gray(150),
-                    );
-                })
+                    ui.add_space(8.0);
+
+                    // Waveform display takes remaining space
+                    render_waveform_display(ui);
+                });
             });
 
             set_current_tab(ctx, current_tab);

@@ -4,6 +4,7 @@ use nih_plug::{
     prelude::ParamSetter,
 };
 
+use super::theme::*;
 use crate::utils;
 
 pub fn create_toggle_button(ui: &mut Ui, param: &BoolParam, setter: &ParamSetter) -> Response {
@@ -79,11 +80,19 @@ pub fn create_slider(
     }
 }
 
-pub fn create_combo_box(ui: &mut Ui, param: &IntParam, setter: &ParamSetter) -> Response {
+pub fn create_combo_box(
+    ui: &mut Ui,
+    param: &IntParam,
+    setter: &ParamSetter,
+    is_enabled: bool,
+) -> Response {
     ui.horizontal(|ui| {
         for root in 0..12 {
             let checked = param.value() == root;
-            let response = ui.selectable_label(checked, utils::semitones_to_note(root));
+            let response = ui.add_enabled(
+                is_enabled,
+                SelectableLabel::new(checked, utils::semitones_to_note(root)),
+            );
             if response.clicked() {
                 setter.set_parameter(param, root);
             }
@@ -159,40 +168,13 @@ pub fn create_integer_input(ui: &mut Ui, param: &IntParam, setter: &ParamSetter)
         }
     }
 
-    // Visual styling
-    let visuals = ui.style().interact(&response);
-    let bg_color = if drag_state.is_dragging {
-        Color32::from_rgb(80, 80, 120)
-    } else if response.hovered() {
-        Color32::from_rgb(60, 60, 80)
-    } else {
-        Color32::from_rgb(40, 40, 60)
-    };
+    // Styling
+    apply_theme_on_rect(ui, rect, &response, &text, drag_state.is_dragging);
 
     // Store the drag state
     ui.ctx().memory_mut(|mem| {
         mem.data.insert_temp(id, drag_state);
     });
-
-    // Draw background
-    ui.painter().rect_filled(rect, 3.0, bg_color);
-
-    // Draw border
-    ui.painter().rect_stroke(
-        rect,
-        3.0,
-        Stroke::new(1.0, visuals.fg_stroke.color),
-        StrokeKind::Inside,
-    );
-
-    // Draw text
-    ui.painter().text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
-        text,
-        egui::FontId::default(),
-        visuals.text_color(),
-    );
 
     response
 }
