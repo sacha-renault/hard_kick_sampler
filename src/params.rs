@@ -123,7 +123,7 @@ impl Default for SampleWrapperParams {
                 0.010, // 10ms default to short release to avoid end clic
                 FloatRange::Skewed {
                     min: 0.001,
-                    max: 10.0, // Longer release times are useful
+                    max: 9.999, // Longer release times are useful
                     factor: FloatRange::skew_factor(-2.0),
                 },
             )

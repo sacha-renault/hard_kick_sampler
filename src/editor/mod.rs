@@ -249,12 +249,12 @@ fn render_sample_info_strip(
 }
 
 fn render_waveform_display(ui: &mut Ui) {
-    let available_height = ui.available_height() - 20.0; // Leave some margin
+    let available_height = ui.available_height() - theme::PANEL_SPACING;
     let rect = ui
         .allocate_response(
             Vec2::new(
                 ui.available_width() - theme::PANEL_SPACING * 2.,
-                available_height.max(150.0),
+                available_height,
             ),
             Sense::hover(),
         )
