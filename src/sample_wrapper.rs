@@ -1,5 +1,7 @@
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+
+use nih_plug::nih_error;
 
 use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SampleWrapperParams};
@@ -50,6 +52,9 @@ pub struct SampleWrapper {
 
     /// The adsr envelope
     adsr: MultiChannelAdsr,
+
+    /// the reader of the buffer
+    shared_buffer: Arc<RwLock<Vec<f32>>>,
 }
 
 impl SampleWrapper {
@@ -77,6 +82,7 @@ impl SampleWrapper {
             params.samples.len() >= index,
             "Index of the sample is more than the maximum"
         );
+
         Self {
             params,
             index,
@@ -87,6 +93,7 @@ impl SampleWrapper {
             midi_note: None,
             num_channel: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
+            shared_buffer: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -165,7 +172,7 @@ impl SampleWrapper {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Set the buffer and sample rate
         self.sample_rate = audio_data.spec.sample_rate;
-        self.buffer = Some(audio_data.data);
+        self.write_two_buffers(Some(audio_data.data));
 
         // If buffer is loaded, we set the sample path
         match self.get_params().sample_path.write() {
@@ -178,7 +185,8 @@ impl SampleWrapper {
     }
 
     pub fn clear_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.buffer = None;
+        // Reset data
+        self.write_two_buffers(None);
         self.sample_rate = 0;
         self.adsr.reset();
         match self.get_params().sample_path.write() {
@@ -213,7 +221,7 @@ impl SampleWrapper {
 
         // Set the buffer and sample rate
         self.sample_rate = audio.spec.sample_rate;
-        self.buffer = Some(audio.data);
+        self.write_two_buffers(Some(audio.data));
         Ok(())
     }
 
@@ -252,7 +260,7 @@ impl SampleWrapper {
     /// Use this when changing samples or cleaning up resources.
     pub fn cleanup_wrapper(&mut self) {
         // Clear sample data
-        self.buffer = None;
+        self.write_two_buffers(None);
 
         // Reset playback state
         self.playback_position = 0.0;
@@ -329,7 +337,7 @@ impl SampleWrapper {
 
         if let Some(buffer) = self.buffer.as_ref() {
             // Get the sample_index
-            let sample_index = self.playback_position as usize * self.num_channel + channel_index;
+            let sample_index = self.get_playback_position(channel_index);
 
             // depending on if it'the value is Some or None
             let sample_value = match (
@@ -378,5 +386,24 @@ impl SampleWrapper {
         } else {
             0.0
         }
+    }
+
+    /// Get the playback position stereo corrected
+    #[inline]
+    pub fn get_playback_position(&self, channel_index: usize) -> usize {
+        self.playback_position as usize * self.num_channel + channel_index
+    }
+
+    #[inline]
+    fn write_two_buffers(&mut self, data: Option<Vec<f32>>) {
+        self.buffer = data.clone();
+        match self.shared_buffer.write() {
+            Ok(mut buff) => *buff = data.unwrap_or_default(),
+            Err(_) => nih_error!("Couldn't write ..."),
+        }
+    }
+
+    pub fn get_wave_reader(&self) -> Arc<RwLock<Vec<f32>>> {
+        self.shared_buffer.clone()
     }
 }

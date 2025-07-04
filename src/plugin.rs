@@ -5,6 +5,7 @@ use std::sync::Arc;
 use crate::editor::create_editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
 use crate::sample_wrapper::SampleWrapper;
+use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
 
@@ -206,7 +207,15 @@ impl Plugin for HardKickSampler {
     }
 
     fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        create_editor(self.params.clone(), async_executor)
+        let state = SharedStates {
+            params: self.params.clone(),
+            wave_readers: self
+                .sample_wrappers
+                .iter()
+                .map(|s| s.get_wave_reader())
+                .collect(),
+        };
+        create_editor(state, async_executor)
     }
 
     fn task_executor(&mut self) -> TaskExecutor<Self> {

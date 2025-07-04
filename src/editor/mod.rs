@@ -3,8 +3,6 @@ mod theme;
 #[allow(dead_code)]
 mod widgets;
 
-use std::sync::Arc;
-
 use egui::*;
 use nih_plug::prelude::ParamSetter;
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
@@ -12,6 +10,7 @@ use nih_plug_egui::{create_egui_editor, EguiState};
 
 use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
+use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 
 fn get_current_tab(ctx: &Context) -> usize {
@@ -300,15 +299,16 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
 }
 
 pub fn create_editor(
-    params: Arc<HardKickSamplerParams>,
+    states: SharedStates,
     async_executor: AsyncExecutor<HardKickSampler>,
 ) -> Option<Box<dyn Editor>> {
     create_egui_editor(
         EguiState::from_size(800, 600),
-        params.clone(),
+        states,
         |_ctx, _params| {},
-        move |ctx, setter, params| {
+        move |ctx, setter, states| {
             let mut current_tab = get_current_tab(ctx);
+            let params = states.params.clone();
 
             handle_file_drop(ctx, &async_executor, current_tab);
             theme::apply_theme(ctx);
@@ -332,11 +332,16 @@ pub fn create_editor(
                     ui.add_space(theme::SPACE_AMOUNT);
 
                     // Sample info strip above waveform
-                    render_sample_info_strip(ui, &async_executor, params, current_tab, setter);
+                    render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
 
                     ui.add_space(8.0);
 
                     // Waveform display takes remaining space
+                    let _ = match states.wave_readers[current_tab].read() {
+                        Ok(data) => Some(data),
+                        Err(_) => None,
+                    }; // Can now use data to render the wave ! :)
+
                     render_waveform_display(ui);
                 });
             });

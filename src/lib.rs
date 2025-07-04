@@ -3,6 +3,7 @@ mod editor;
 mod params;
 mod plugin;
 mod sample_wrapper;
+mod shared_states;
 mod tasks;
 mod utils;
 

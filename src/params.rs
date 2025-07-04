@@ -9,7 +9,7 @@ use crate::utils;
 
 pub const MAX_SAMPLES: usize = 8;
 
-#[derive(Params)]
+#[derive(Params, Debug)]
 pub struct SampleWrapperParams {
     #[persist = "sample_path"]
     pub sample_path: Arc<RwLock<Option<PathBuf>>>,
@@ -134,7 +134,7 @@ impl Default for SampleWrapperParams {
     }
 }
 
-#[derive(Params)]
+#[derive(Params, Debug)]
 pub struct HardKickSamplerParams {
     /// The parameter's ID is used to identify the parameter in the wrappred plugin API. As long as
     /// these IDs remain constant, you can rename and reorder these fields as you wish. The
