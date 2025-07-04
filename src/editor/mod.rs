@@ -99,7 +99,7 @@ fn render_tonal_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: 
             // note when the value isn't checked
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                ui.label("Note:");
+                ui.label("Root Note:");
                 widgets::create_combo_box(
                     ui,
                     &sample_params.root_note,
@@ -181,70 +181,81 @@ fn render_sample_info_strip(
     let current_file_path = get_sample_path(sample_params);
     let current_file_name = get_sample_name(sample_params);
 
-    Frame::new()
-        .fill(theme::BACKGROUND_COLOR_FOCUSED)
-        .stroke(Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR))
-        .corner_radius(theme::SMALL_ROUNDING)
-        .inner_margin(Margin::same(6))
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                // Mute checkbox on the left
-                widgets::create_checkbox(ui, &sample_params.muted, setter);
+    ui.allocate_ui_with_layout(
+        Vec2::new(ui.available_width() - 2. * theme::PANEL_SPACING, 30.0), // Set explicit height too
+        Layout::left_to_right(Align::Center),
+        |ui| {
+            Frame::new()
+                .fill(theme::BACKGROUND_COLOR_FOCUSED)
+                .stroke(Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR))
+                .corner_radius(theme::SMALL_ROUNDING)
+                .inner_margin(Margin::same(6))
+                .show(ui, |ui| {
+                    ui.set_min_width(ui.available_width() - theme::PANEL_SPACING * 2.);
+                    ui.horizontal(|ui| {
+                        // Mute checkbox on the left
+                        widgets::create_checkbox(ui, &sample_params.muted, setter);
 
-                ui.add_space(10.0);
+                        ui.add_space(10.0);
 
-                // Sample name
-                ui.label(
-                    RichText::new(current_file_name.unwrap_or("No sample loaded".to_string()))
-                        .color(theme::TEXT_COLOR),
-                );
+                        // Sample name
+                        ui.label(
+                            RichText::new(
+                                current_file_name.unwrap_or("No sample loaded".to_string()),
+                            )
+                            .color(theme::TEXT_COLOR),
+                        );
 
-                // Push file controls to the right
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if ui.button("Delete").clicked() {
-                        async_executor.execute_background(TaskRequests::TransfertTask(
-                            TaskResults::ClearSample(current_tab),
-                        ));
-                    }
+                        // Push file controls to the right
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            if ui.button("Delete").clicked() {
+                                async_executor.execute_background(TaskRequests::TransfertTask(
+                                    TaskResults::ClearSample(current_tab),
+                                ));
+                            }
 
-                    if ui
-                        .add_enabled(current_file_path.is_some(), Button::new(">"))
-                        .clicked()
-                    {
-                        if let Some(file) = current_file_path.clone() {
-                            async_executor.execute_background(TaskRequests::LoadNextFile(
-                                current_tab,
-                                file.clone(),
-                            ));
-                        }
-                    }
+                            if ui
+                                .add_enabled(current_file_path.is_some(), Button::new(">"))
+                                .clicked()
+                            {
+                                if let Some(file) = current_file_path.clone() {
+                                    async_executor.execute_background(TaskRequests::LoadNextFile(
+                                        current_tab,
+                                        file.clone(),
+                                    ));
+                                }
+                            }
 
-                    if ui
-                        .add_enabled(current_file_path.is_some(), Button::new("<"))
-                        .clicked()
-                    {
-                        if let Some(file) = current_file_path {
-                            async_executor.execute_background(TaskRequests::LoadPreviousFile(
-                                current_tab,
-                                file.clone(),
-                            ));
-                        }
-                    }
+                            if ui
+                                .add_enabled(current_file_path.is_some(), Button::new("<"))
+                                .clicked()
+                            {
+                                if let Some(file) = current_file_path {
+                                    async_executor.execute_background(
+                                        TaskRequests::LoadPreviousFile(current_tab, file.clone()),
+                                    );
+                                }
+                            }
 
-                    if ui.button("📁").clicked() {
-                        async_executor
-                            .execute_background(TaskRequests::OpenFilePicker(current_tab));
-                    }
+                            if ui.button("📁").clicked() {
+                                async_executor
+                                    .execute_background(TaskRequests::OpenFilePicker(current_tab));
+                            }
+                        });
+                    });
                 });
-            });
-        });
+        },
+    );
 }
 
 fn render_waveform_display(ui: &mut Ui) {
     let available_height = ui.available_height() - 20.0; // Leave some margin
     let rect = ui
         .allocate_response(
-            Vec2::new(ui.available_width(), available_height.max(150.0)),
+            Vec2::new(
+                ui.available_width() - theme::PANEL_SPACING * 2.,
+                available_height.max(150.0),
+            ),
             Sense::hover(),
         )
         .rect;

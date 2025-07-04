@@ -48,7 +48,13 @@ impl Default for SampleWrapperParams {
         Self {
             sample_path: Arc::new(RwLock::new(None)),
 
-            muted: BoolParam::new("Muted", false),
+            muted: BoolParam::new("Muted", false).with_value_to_string(Arc::new(|value| {
+                if value {
+                    String::from("Muted")
+                } else {
+                    String::from("Mute")
+                }
+            })),
 
             is_tonal: BoolParam::new("Tonal", true),
 

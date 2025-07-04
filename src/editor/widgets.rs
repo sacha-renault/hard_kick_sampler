@@ -9,7 +9,8 @@ use crate::utils;
 
 pub fn create_toggle_button(ui: &mut Ui, param: &BoolParam, setter: &ParamSetter) -> Response {
     let mut value = param.value();
-    let response = ui.toggle_value(&mut value, param.name());
+    let text = param.normalized_value_to_string(param.modulated_normalized_value(), false);
+    let response = ui.toggle_value(&mut value, text);
 
     if response.changed() {
         setter.set_parameter(param, value);
