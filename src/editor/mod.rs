@@ -11,7 +11,7 @@ use nih_plug::prelude::ParamSetter;
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
-use crate::editor::waveform::WaveformCache;
+use crate::editor::waveform::render_waveform_stereo;
 use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -251,12 +251,7 @@ fn render_sample_info_strip(
     );
 }
 
-fn render_waveform_display(
-    ui: &mut Ui,
-    waveform_data: Option<&Vec<f32>>,
-    path: Option<PathBuf>,
-    cache: &mut WaveformCache,
-) {
+fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
     let available_height = ui.available_height() - theme::PANEL_SPACING;
     let rect = ui
         .allocate_response(
@@ -281,31 +276,22 @@ fn render_waveform_display(
     );
 
     // Render image if needed
-    if let (Some(data), Some(path)) = (waveform_data, path) {
-        // Use the rect dimensions for the viewport
-        let viewport = (rect.width(), rect.height());
-
-        // Update cache if needed
-        cache.update_if_needed(ui.ctx(), data, &path, viewport);
-
-        // Display the cached waveform texture
-        if let Some(texture_id) = cache.get_texture_id() {
-            ui.painter().image(
-                texture_id,
-                rect,
-                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                egui::Color32::WHITE,
+    match waveform_data {
+        Some(data) if !data.is_empty() => {
+            ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+                render_waveform_stereo(ui, data)
+            });
+        }
+        _ => {
+            ui.allocate_new_ui(
+                egui::UiBuilder::new()
+                    .max_rect(rect)
+                    .layout(egui::Layout::centered_and_justified(
+                        egui::Direction::LeftToRight,
+                    )),
+                |ui| ui.label("No waveform data"),
             );
         }
-    } else {
-        ui.allocate_new_ui(
-            egui::UiBuilder::new()
-                .max_rect(rect)
-                .layout(egui::Layout::centered_and_justified(
-                    egui::Direction::LeftToRight,
-                )),
-            |ui| ui.label("No waveform data"),
-        );
     }
 }
 
@@ -337,18 +323,9 @@ pub fn create_editor(
         move |ctx, setter, states| {
             let mut current_tab = get_current_tab(ctx);
             let params = states.params.clone();
-            let path = get_sample_path(&states.params.samples[current_tab]).map(PathBuf::from);
 
             handle_file_drop(ctx, &async_executor, current_tab);
             theme::apply_theme(ctx);
-
-            // Get or create cache from egui memory
-            let cache_id = egui::Id::new("waveform_cache").with(current_tab);
-            let mut cache = ctx.memory_mut(|mem| {
-                mem.data
-                    .get_temp_mut_or_default::<WaveformCache>(cache_id)
-                    .clone()
-            });
 
             CentralPanel::default().show(ctx, |ui| {
                 ui.vertical(|ui| {
@@ -375,16 +352,11 @@ pub fn create_editor(
 
                     // Waveform display takes remaining space
                     let waveform_data = states.wave_readers[current_tab].read().ok();
-                    render_waveform_display(ui, waveform_data.as_deref(), path, &mut cache);
+                    render_waveform_display(ui, waveform_data.as_deref());
                 });
             });
 
             set_current_tab(ctx, current_tab);
-
-            // Store cache back to egui memory
-            ctx.memory_mut(|mem| {
-                mem.data.insert_temp(cache_id, cache);
-            });
         },
     )
 }
