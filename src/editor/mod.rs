@@ -1,13 +1,17 @@
 #[allow(dead_code)]
 mod theme;
+mod waveform;
 #[allow(dead_code)]
 mod widgets;
+
+use std::path::{Path, PathBuf};
 
 use egui::*;
 use nih_plug::prelude::ParamSetter;
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
+use crate::editor::waveform::WaveformCache;
 use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -247,7 +251,12 @@ fn render_sample_info_strip(
     );
 }
 
-fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
+fn render_waveform_display(
+    ui: &mut Ui,
+    waveform_data: Option<&Vec<f32>>,
+    path: Option<PathBuf>,
+    cache: &mut WaveformCache,
+) {
     let available_height = ui.available_height() - theme::PANEL_SPACING;
     let rect = ui
         .allocate_response(
@@ -271,92 +280,32 @@ fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
         StrokeKind::Inside,
     );
 
-    match waveform_data {
-        Some(data) if !data.is_empty() => {
-            // Assume stereo interleaved data (L, R, L, R, ...)
-            let channels = 2;
-            let samples_per_channel = data.len() / channels;
+    // Render image if needed
+    if let (Some(data), Some(path)) = (waveform_data, path) {
+        // Use the rect dimensions for the viewport
+        let viewport = (rect.width(), rect.height());
 
-            // Calculate drawing parameters
-            let inner_rect = rect.shrink(theme::PANEL_SPACING);
-            let channel_height = inner_rect.height() / channels as f32;
-            let sample_width = inner_rect.width() / samples_per_channel as f32;
+        // Update cache if needed
+        cache.update_if_needed(ui.ctx(), data, &path, viewport);
 
-            // Draw each channel
-            for channel in 0..channels {
-                let channel_rect = Rect::from_min_size(
-                    Pos2::new(
-                        inner_rect.min.x,
-                        inner_rect.min.y + channel as f32 * channel_height,
-                    ),
-                    Vec2::new(inner_rect.width(), channel_height),
-                );
-
-                let center_y = channel_rect.center().y;
-                let amplitude_scale = channel_height * 0.4; // Use 40% of channel height
-
-                // Draw center line
-                ui.painter().line_segment(
-                    [
-                        Pos2::new(channel_rect.min.x, center_y),
-                        Pos2::new(channel_rect.max.x, center_y),
-                    ],
-                    Stroke::new(1.0, Color32::from_gray(60)),
-                );
-
-                // Draw waveform
-                let mut points = Vec::new();
-                for i in 0..samples_per_channel {
-                    let sample_index = i * channels + channel;
-                    if sample_index < data.len() {
-                        let sample = data[sample_index].clamp(-1.0, 1.0);
-                        let x = inner_rect.min.x + i as f32 * sample_width;
-                        let y = center_y - sample * amplitude_scale;
-                        points.push(Pos2::new(x, y));
-                    }
-                }
-
-                // Draw the waveform line
-                if points.len() > 1 {
-                    for window in points.windows(2) {
-                        ui.painter().line_segment(
-                            [window[0], window[1]],
-                            Stroke::new(
-                                1.5,
-                                if channel == 0 {
-                                    Color32::LIGHT_BLUE
-                                } else {
-                                    Color32::LIGHT_RED
-                                },
-                            ),
-                        );
-                    }
-                }
-
-                // Channel label
-                ui.painter().text(
-                    Pos2::new(channel_rect.min.x + 5.0, channel_rect.min.y + 5.0),
-                    Align2::LEFT_TOP,
-                    if channel == 0 { "L" } else { "R" },
-                    theme::FONT_SMALL,
-                    if channel == 0 {
-                        Color32::LIGHT_BLUE
-                    } else {
-                        Color32::LIGHT_RED
-                    },
-                );
-            }
-        }
-        _ => {
-            // Add placeholder text when no data
-            ui.painter().text(
-                rect.center(),
-                Align2::CENTER_CENTER,
-                "No Waveform Data",
-                theme::FONT_LARGE,
-                theme::TEXT_COLOR_DISABLED,
+        // Display the cached waveform texture
+        if let Some(texture_id) = cache.get_texture_id() {
+            ui.painter().image(
+                texture_id,
+                rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
             );
         }
+    } else {
+        ui.allocate_new_ui(
+            egui::UiBuilder::new()
+                .max_rect(rect)
+                .layout(egui::Layout::centered_and_justified(
+                    egui::Direction::LeftToRight,
+                )),
+            |ui| ui.label("No waveform data"),
+        );
     }
 }
 
@@ -388,9 +337,18 @@ pub fn create_editor(
         move |ctx, setter, states| {
             let mut current_tab = get_current_tab(ctx);
             let params = states.params.clone();
+            let path = get_sample_path(&states.params.samples[current_tab]).map(PathBuf::from);
 
             handle_file_drop(ctx, &async_executor, current_tab);
             theme::apply_theme(ctx);
+
+            // Get or create cache from egui memory
+            let cache_id = egui::Id::new("waveform_cache").with(current_tab);
+            let mut cache = ctx.memory_mut(|mem| {
+                mem.data
+                    .get_temp_mut_or_default::<WaveformCache>(cache_id)
+                    .clone()
+            });
 
             CentralPanel::default().show(ctx, |ui| {
                 ui.vertical(|ui| {
@@ -417,11 +375,16 @@ pub fn create_editor(
 
                     // Waveform display takes remaining space
                     let waveform_data = states.wave_readers[current_tab].read().ok();
-                    render_waveform_display(ui, waveform_data.as_deref());
+                    render_waveform_display(ui, waveform_data.as_deref(), path, &mut cache);
                 });
             });
 
             set_current_tab(ctx, current_tab);
+
+            // Store cache back to egui memory
+            ctx.memory_mut(|mem| {
+                mem.data.insert_temp(cache_id, cache);
+            });
         },
     )
 }
