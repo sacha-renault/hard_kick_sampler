@@ -1,10 +1,9 @@
+mod knob;
 #[allow(dead_code)]
 mod theme;
 mod waveform;
 #[allow(dead_code)]
 mod widgets;
-
-use std::path::{Path, PathBuf};
 
 use egui::*;
 use nih_plug::prelude::ParamSetter;
@@ -84,11 +83,12 @@ fn render_panel<R>(
 fn render_adsr_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
     render_panel(ui, "ADSR", |ui| {
         ui.horizontal(|ui| {
-            let orientation = SliderOrientation::Vertical;
-            widgets::create_slider(ui, &sample_params.attack, setter, orientation, 0.1);
-            widgets::create_slider(ui, &sample_params.decay, setter, orientation, 0.1);
-            widgets::create_slider(ui, &sample_params.sustain, setter, orientation, 0.1);
-            widgets::create_slider(ui, &sample_params.release, setter, orientation, 0.1);
+            ui.columns(4, |columns| {
+                widgets::create_knob(&mut columns[0], &sample_params.attack, setter, 0.1);
+                widgets::create_knob(&mut columns[1], &sample_params.decay, setter, 0.1);
+                widgets::create_knob(&mut columns[2], &sample_params.sustain, setter, 0.1);
+                widgets::create_knob(&mut columns[3], &sample_params.release, setter, 0.1);
+            });
         });
     });
 }

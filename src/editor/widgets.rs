@@ -5,7 +5,7 @@ use nih_plug::{
 };
 
 use super::theme::*;
-use crate::utils;
+use crate::{editor::knob, utils};
 
 pub fn create_toggle_button(ui: &mut Ui, param: &BoolParam, setter: &ParamSetter) -> Response {
     let mut value = param.value();
@@ -178,4 +178,57 @@ pub fn create_integer_input(ui: &mut Ui, param: &IntParam, setter: &ParamSetter)
     });
 
     response
+}
+
+pub fn create_knob(
+    ui: &mut Ui,
+    param: &FloatParam,
+    setter: &ParamSetter,
+    scroll_step: f32,
+) -> Response {
+    ui.allocate_ui_with_layout(
+        ui.available_size(),
+        Layout::top_down(egui::Align::Center),
+        |ui| {
+            // set name + value
+            ui.centered_and_justified(|ui| {
+                ui.label(format!("{}", param.name()));
+            });
+
+            let mut value = param.modulated_normalized_value();
+
+            let knob = knob::Knob::new(&mut value, 0.0, 1.0, knob::KnobStyle::Wiper)
+                .with_size(30.0)
+                .with_font_size(14.0)
+                .with_stroke_width(2.0)
+                .with_colors(Color32::GRAY, Color32::WHITE, Color32::WHITE);
+
+            let response = ui.add(knob);
+
+            if response.changed() {
+                setter.set_parameter_normalized(param, value);
+            }
+
+            if response.hovered()
+                && ui.input(|i| i.pointer.button_double_clicked(PointerButton::Primary))
+            {
+                setter.set_parameter(param, param.default_plain_value());
+            }
+
+            if response.hovered() {
+                let scroll_delta = ui.input(|i| i.raw_scroll_delta.y);
+                if scroll_delta > 0.0 {
+                    setter.set_parameter_normalized(param, value + scroll_step);
+                } else if scroll_delta < 0.0 {
+                    setter.set_parameter_normalized(param, value - scroll_step);
+                }
+            }
+
+            ui.centered_and_justified(|ui| {
+                ui.label(format!("{}", param.normalized_value_to_string(value, true)));
+            });
+            response
+        },
+    )
+    .response
 }

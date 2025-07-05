@@ -840,6 +840,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_knob"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "850f74777146bc4127478d7f8a9a89d52cab74d0e90ce30800b12b136a511396"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui_plot"
 version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1144,6 +1153,7 @@ version = "0.1.0"
 dependencies = [
  "derive_more",
  "egui",
+ "egui_knob",
  "egui_plot",
  "hound",
  "nih_plug",
