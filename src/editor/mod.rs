@@ -280,13 +280,45 @@ fn render_sample_info_strip(
     );
 }
 
-fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
-    let available_height = ui.available_height() - theme::PANEL_SPACING;
+fn render_waveform_display(
+    ui: &mut Ui,
+    waveform_data: Option<&Vec<f32>>,
+    num_channels: usize,
+    params: &SampleWrapperParams,
+) {
+    // Render image if needed
+    match waveform_data {
+        Some(data) if !data.is_empty() => {
+            let height_per_channel =
+                (ui.available_height() - theme::SPACE_AMOUNT) / num_channels as f32;
+            for channel_index in 0..num_channels {
+                let rect = paint_rect(ui, height_per_channel, ui.available_width());
+                ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
+                    render_waveform_stereo(ui, data, channel_index, num_channels)
+                });
+            }
+        }
+        _ => {
+            let rect = paint_rect(
+                ui,
+                ui.available_height() - theme::SPACE_AMOUNT,
+                ui.available_width(),
+            );
+            ui.allocate_new_ui(
+                egui::UiBuilder::new()
+                    .max_rect(rect)
+                    .layout(egui::Layout::centered_and_justified(
+                        egui::Direction::LeftToRight,
+                    )),
+                |ui| ui.label("No waveform data"),
+            );
+        }
+    }
+}
+
+fn paint_rect(ui: &mut Ui, height: f32, width: f32) -> Rect {
     let rect = ui
-        .allocate_response(
-            Vec2::new(ui.available_width(), available_height),
-            Sense::hover(),
-        )
+        .allocate_response(Vec2::new(width, height), Sense::hover())
         .rect;
 
     // Draw waveform background
@@ -298,27 +330,9 @@ fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
         rect,
         theme::STANDARD_ROUNDING,
         Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR),
-        StrokeKind::Inside,
+        StrokeKind::Middle,
     );
-
-    // Render image if needed
-    match waveform_data {
-        Some(data) if !data.is_empty() => {
-            ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
-                render_waveform_stereo(ui, data)
-            });
-        }
-        _ => {
-            ui.allocate_new_ui(
-                egui::UiBuilder::new()
-                    .max_rect(rect)
-                    .layout(egui::Layout::centered_and_justified(
-                        egui::Direction::LeftToRight,
-                    )),
-                |ui| ui.label("No waveform data"),
-            );
-        }
-    }
+    rect
 }
 
 fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
@@ -370,6 +384,8 @@ pub fn create_editor(
             handle_file_drop(ctx, &async_executor, current_tab);
             theme::apply_theme(ctx);
 
+            let current_sample_params = &params.samples[current_tab];
+
             CentralPanel::default().show(ctx, |ui| {
                 show_with_margin(
                     ui,
@@ -388,7 +404,7 @@ pub fn create_editor(
                         ui.add_space(theme::SPACE_AMOUNT);
 
                         // Control panels in the middle
-                        render_control_panels(ui, &params.samples[current_tab], setter);
+                        render_control_panels(ui, current_sample_params, setter);
 
                         ui.add_space(theme::SPACE_AMOUNT);
 
@@ -399,7 +415,12 @@ pub fn create_editor(
 
                         // Waveform display takes remaining space
                         let waveform_data = states.wave_readers[current_tab].read().ok();
-                        render_waveform_display(ui, waveform_data.as_deref());
+                        render_waveform_display(
+                            ui,
+                            waveform_data.as_deref(),
+                            2,
+                            current_sample_params,
+                        );
                     },
                 );
             });
