@@ -41,6 +41,14 @@ pub struct SampleWrapperParams {
 
     #[id = "release"]
     pub release: FloatParam,
+
+    // Start control (in s)
+    #[id = "trim_start"]
+    pub trim_start: FloatParam,
+
+    // Delay start (in s)
+    #[id = "delay_start"]
+    pub delay_start: FloatParam,
 }
 
 impl Default for SampleWrapperParams {
@@ -63,7 +71,7 @@ impl Default for SampleWrapperParams {
                 util::db_to_gain(0.0),
                 FloatRange::Skewed {
                     min: util::db_to_gain(-30.0),
-                    max: util::db_to_gain(30.0),
+                    max: util::db_to_gain(6.0),
                     factor: FloatRange::gain_skew_factor(-30.0, 30.0),
                 },
             )
@@ -128,6 +136,30 @@ impl Default for SampleWrapperParams {
                 },
             )
             .with_smoother(SmoothingStyle::Linear(50.0))
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            delay_start: FloatParam::new(
+                "Delay Start",
+                0.0,
+                FloatRange::Skewed {
+                    min: 0.,
+                    max: 5.,
+                    factor: FloatRange::skew_factor(-1.5),
+                },
+            )
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            trim_start: FloatParam::new(
+                "Trim Start",
+                0.0,
+                FloatRange::Skewed {
+                    min: 0.,
+                    max: 5.,
+                    factor: FloatRange::skew_factor(-1.5),
+                },
+            )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),
         }

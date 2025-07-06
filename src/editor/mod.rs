@@ -93,6 +93,21 @@ fn render_adsr_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &
     });
 }
 
+fn render_time_control_panel(
+    ui: &mut Ui,
+    sample_params: &SampleWrapperParams,
+    setter: &ParamSetter,
+) {
+    render_panel(ui, "Time Control", |ui| {
+        ui.horizontal(|ui| {
+            ui.columns(2, |columns| {
+                widgets::create_knob(&mut columns[0], &sample_params.trim_start, setter, 0.1);
+                widgets::create_knob(&mut columns[1], &sample_params.delay_start, setter, 0.1);
+            });
+        });
+    });
+}
+
 fn render_tonal_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
     render_panel(ui, "Tonal", |ui| {
         ui.vertical(|ui| {
@@ -141,10 +156,15 @@ fn render_control_panels(ui: &mut Ui, sample_params: &SampleWrapperParams, sette
         // ADSR and Gain panels - horizontal layout below
         ui.horizontal_top(|ui| {
             // Use horizontal_top for top alignment
-            // ADSR Panel - 80% width
-            let available_width = ui.available_width() - theme::PANEL_SPACING;
+            // ADSR Panel - 40% width
+            let total_spacing = theme::PANEL_SPACING * 2.0;
+            let available_width = ui.available_width() - total_spacing;
             let panel_height = 120.0;
+
+            // Calculate widths based on available space after spacing
             let adsr_width = available_width * 0.4;
+            let time_width = available_width * 0.4;
+            let gain_width = available_width * 0.2;
 
             ui.allocate_ui_with_layout(
                 Vec2::new(adsr_width, panel_height),
@@ -159,22 +179,17 @@ fn render_control_panels(ui: &mut Ui, sample_params: &SampleWrapperParams, sette
 
             // Add a placeholder panel
             ui.allocate_ui_with_layout(
-                Vec2::new(adsr_width, panel_height),
+                Vec2::new(time_width, panel_height),
                 Layout::top_down(Align::LEFT),
                 |ui| {
                     ui.set_min_size(Vec2::new(adsr_width, panel_height));
-                    render_panel(ui, "Placeholder", |ui| {
-                        ui.horizontal(|ui| {
-                            ui.columns(4, |_columns| {});
-                        });
-                    });
+                    render_time_control_panel(ui, sample_params, setter)
                 },
             );
 
             ui.add_space(theme::PANEL_SPACING);
 
             // Gain Panel - 20% width
-            let gain_width = available_width * 0.2;
             ui.allocate_ui_with_layout(
                 Vec2::new(gain_width, panel_height),
                 Layout::top_down(Align::LEFT),
@@ -199,7 +214,7 @@ fn render_sample_info_strip(
     let current_file_name = get_sample_name(sample_params);
 
     ui.allocate_ui_with_layout(
-        Vec2::new(ui.available_width() - 2. * theme::PANEL_SPACING, 30.0), // Set explicit height too
+        Vec2::new(ui.available_width(), 30.0), // Set explicit height too
         Layout::left_to_right(Align::Center),
         |ui| {
             Frame::new()
@@ -209,7 +224,7 @@ fn render_sample_info_strip(
                 .inner_margin(Margin::same(6))
                 .show(ui, |ui| {
                     ui.set_min_width(ui.available_width() - theme::PANEL_SPACING * 2.);
-                    ui.horizontal(|ui| {
+                    ui.horizontal_centered(|ui| {
                         // Mute checkbox on the left
                         widgets::create_checkbox(ui, &sample_params.muted, setter);
 
@@ -269,10 +284,7 @@ fn render_waveform_display(ui: &mut Ui, waveform_data: Option<&Vec<f32>>) {
     let available_height = ui.available_height() - theme::PANEL_SPACING;
     let rect = ui
         .allocate_response(
-            Vec2::new(
-                ui.available_width() - theme::PANEL_SPACING * 2.,
-                available_height,
-            ),
+            Vec2::new(ui.available_width(), available_height),
             Sense::hover(),
         )
         .rect;
@@ -326,6 +338,23 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
     new_tab
 }
 
+fn show_with_margin<R>(
+    ui: &mut Ui,
+    margins: (f32, f32),
+    layout: Layout,
+    add_contents: impl FnOnce(&mut Ui) -> R,
+) -> Response {
+    ui.allocate_ui_with_layout(
+        Vec2::new(
+            ui.available_width() - margins.0 * 2.,
+            ui.available_height() - margins.1 * 2.,
+        ),
+        layout,
+        add_contents,
+    )
+    .response
+}
+
 pub fn create_editor(
     states: SharedStates,
     async_executor: AsyncExecutor<HardKickSampler>,
@@ -342,32 +371,37 @@ pub fn create_editor(
             theme::apply_theme(ctx);
 
             CentralPanel::default().show(ctx, |ui| {
-                ui.vertical(|ui| {
-                    // Header with title and tabs
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("Hard Kick Sampler").size(24.0).strong());
+                show_with_margin(
+                    ui,
+                    (theme::PANEL_PADDING, theme::PANEL_PADDING),
+                    Layout::top_down(Align::LEFT),
+                    |ui| {
+                        // Header with title and tabs
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Hard Kick Sampler").size(24.0).strong());
 
-                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            current_tab = render_tabs(ui, current_tab);
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                current_tab = render_tabs(ui, current_tab);
+                            });
                         });
-                    });
 
-                    ui.add_space(theme::SPACE_AMOUNT);
+                        ui.add_space(theme::SPACE_AMOUNT);
 
-                    // Control panels in the middle
-                    render_control_panels(ui, &params.samples[current_tab], setter);
+                        // Control panels in the middle
+                        render_control_panels(ui, &params.samples[current_tab], setter);
 
-                    ui.add_space(theme::SPACE_AMOUNT);
+                        ui.add_space(theme::SPACE_AMOUNT);
 
-                    // Sample info strip above waveform
-                    render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
+                        // Sample info strip above waveform
+                        render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
 
-                    ui.add_space(8.0);
+                        ui.add_space(8.0);
 
-                    // Waveform display takes remaining space
-                    let waveform_data = states.wave_readers[current_tab].read().ok();
-                    render_waveform_display(ui, waveform_data.as_deref());
-                });
+                        // Waveform display takes remaining space
+                        let waveform_data = states.wave_readers[current_tab].read().ok();
+                        render_waveform_display(ui, waveform_data.as_deref());
+                    },
+                );
             });
 
             set_current_tab(ctx, current_tab);
