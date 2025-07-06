@@ -6,9 +6,19 @@ pub fn render_waveform_stereo(
     channel_index: usize,
     num_channels: usize,
     trim_start: f32,
+    delay_start: f32,
     sample_rate: f32,
 ) {
     let skip = trim_start * sample_rate * num_channels as f32 + channel_index as f32;
+    let add_silent = (delay_start * sample_rate) as usize;
+
+    let silent_data = (0..add_silent).enumerate().map(|(i, _)| [i as f64, 0.]);
+    let plot_data = data
+        .iter()
+        .skip(skip as usize)
+        .step_by(num_channels)
+        .enumerate()
+        .map(|(i, &y)| [(add_silent + i) as f64, y as f64]);
     Plot::new(format!("{}Plot", channel_index))
         // .legend(Legend::default())
         .allow_drag(false)
@@ -22,13 +32,7 @@ pub fn render_waveform_stereo(
         .show(ui, |ui| {
             ui.line(Line::new(
                 channel_index.to_string(),
-                PlotPoints::from_iter(
-                    data.iter()
-                        .skip(skip as usize)
-                        .step_by(num_channels)
-                        .enumerate()
-                        .map(|(i, &y)| [i as f64, y as f64]),
-                ),
+                PlotPoints::from_iter(silent_data.chain(plot_data)),
             ));
         });
 }

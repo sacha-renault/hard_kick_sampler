@@ -292,6 +292,7 @@ fn render_waveform_display(
             let height_per_channel =
                 (ui.available_height() - theme::SPACE_AMOUNT) / num_channels as f32;
             let trim_start = params.trim_start.value();
+            let delay_start = params.delay_start.value();
             for channel_index in 0..num_channels {
                 let rect = paint_rect(ui, height_per_channel, ui.available_width());
                 ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
@@ -301,7 +302,8 @@ fn render_waveform_display(
                         channel_index,
                         num_channels,
                         trim_start,
-                        44100.,
+                        delay_start,
+                        44100., // TODO get the real sample rate!
                     )
                 });
             }
