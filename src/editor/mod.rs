@@ -122,14 +122,12 @@ fn render_tonal_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: 
 
 fn render_gain_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
     render_panel(ui, "Gain", |ui| {
-        // Vertical gain slider to save space
-        widgets::create_slider(
-            ui,
-            &sample_params.gain,
-            setter,
-            SliderOrientation::Vertical,
-            0.025,
-        );
+        // Add horizontal layout to match other panels
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                widgets::create_knob(ui, &sample_params.gain, setter, 0.025);
+            });
+        });
     });
 }
 
@@ -146,7 +144,7 @@ fn render_control_panels(ui: &mut Ui, sample_params: &SampleWrapperParams, sette
             // ADSR Panel - 80% width
             let available_width = ui.available_width() - theme::PANEL_SPACING;
             let panel_height = 120.0;
-            let adsr_width = available_width * 0.8;
+            let adsr_width = available_width * 0.4;
 
             ui.allocate_ui_with_layout(
                 Vec2::new(adsr_width, panel_height),
@@ -154,6 +152,22 @@ fn render_control_panels(ui: &mut Ui, sample_params: &SampleWrapperParams, sette
                 |ui| {
                     ui.set_min_size(Vec2::new(adsr_width, panel_height));
                     render_adsr_panel(ui, sample_params, setter)
+                },
+            );
+
+            ui.add_space(theme::PANEL_SPACING);
+
+            // Add a placeholder panel
+            ui.allocate_ui_with_layout(
+                Vec2::new(adsr_width, panel_height),
+                Layout::top_down(Align::LEFT),
+                |ui| {
+                    ui.set_min_size(Vec2::new(adsr_width, panel_height));
+                    render_panel(ui, "Placeholder", |ui| {
+                        ui.horizontal(|ui| {
+                            ui.columns(4, |_columns| {});
+                        });
+                    });
                 },
             );
 
