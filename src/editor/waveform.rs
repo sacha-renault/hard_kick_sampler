@@ -5,7 +5,10 @@ pub fn render_waveform_stereo(
     data: &Vec<f32>,
     channel_index: usize,
     num_channels: usize,
+    trim_start: f32,
+    sample_rate: f32,
 ) {
+    let skip = trim_start * sample_rate * num_channels as f32 + channel_index as f32;
     Plot::new(format!("{}Plot", channel_index))
         // .legend(Legend::default())
         .allow_drag(false)
@@ -21,7 +24,7 @@ pub fn render_waveform_stereo(
                 channel_index.to_string(),
                 PlotPoints::from_iter(
                     data.iter()
-                        .skip(channel_index)
+                        .skip(skip as usize)
                         .step_by(num_channels)
                         .enumerate()
                         .map(|(i, &y)| [i as f64, y as f64]),

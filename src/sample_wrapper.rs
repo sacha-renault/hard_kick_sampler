@@ -115,8 +115,10 @@ impl SampleWrapper {
             // Set the note that is currently playing
             self.midi_note = Some(semitone_offset);
 
-            // Reset playback position to start of sample
-            self.playback_position = 0.0;
+            // Reset playback position to position defined as start
+            let sample_per_second = self.sample_rate as f32;
+            let delay_start = self.get_params().trim_start.value();
+            self.playback_position = sample_per_second * delay_start;
 
             // Trigger the adsr
             self.adsr.note_on();
@@ -251,7 +253,12 @@ impl SampleWrapper {
 
         let final_offset = midi_note_offset + param_note_offset - root_note;
         let playback_rate = 2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE);
-        self.playback_position += playback_rate * (self.sample_rate as f32 / self.host_sample_rate);
+        self.playback_position += playback_rate * self.get_sr_correction();
+    }
+
+    #[inline]
+    pub fn get_sr_correction(&self) -> f32 {
+        self.sample_rate as f32 / self.host_sample_rate
     }
 
     /// Completely resets and clears the sample wrapper.
