@@ -16,6 +16,8 @@ use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 
+const PANEL_HEIGHT: f32 = 135.;
+
 fn get_current_tab(ctx: &Context) -> usize {
     ctx.data(|data| data.get_temp::<usize>(Id::new("tab")).clone().unwrap_or(0))
 }
@@ -59,147 +61,52 @@ fn handle_file_drop(
 fn render_panel<R>(
     ui: &mut Ui,
     title: &str,
+    width: f32,
+    height: f32,
     add_contents: impl FnOnce(&mut Ui) -> R,
-) -> InnerResponse<R> {
-    Frame::new()
-        .fill(theme::BACKGROUND_COLOR)
-        .stroke(Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR))
-        .corner_radius(theme::STANDARD_ROUNDING)
-        .inner_margin(Margin::same(theme::PANEL_PADDING as i8))
-        .show(ui, |ui| {
-            ui.vertical(|ui| {
-                ui.label(
-                    RichText::new(title)
-                        .strong()
-                        .color(theme::TEXT_COLOR_ACCENT),
-                );
-                ui.add_space(4.0);
-                add_contents(ui)
-            })
-            .inner
-        })
-}
+) -> Response {
+    // Remove padding and stroke to the inner width
+    let corrected_width = width - theme::PANEL_PADDING * 2. - theme::STANDARD_STROKE * 2.;
+    let corrected_height = height - theme::PANEL_PADDING * 2. - theme::STANDARD_STROKE * 2.;
+    let panel_rect = Rect::from_min_size(
+        ui.cursor().min,
+        Vec2::new(corrected_width, corrected_height),
+    );
 
-fn render_adsr_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
-    render_panel(ui, "ADSR", |ui| {
-        ui.horizontal(|ui| {
-            ui.columns(4, |columns| {
-                widgets::create_knob(&mut columns[0], &sample_params.attack, setter, 0.1);
-                widgets::create_knob(&mut columns[1], &sample_params.decay, setter, 0.1);
-                widgets::create_knob(&mut columns[2], &sample_params.sustain, setter, 0.1);
-                widgets::create_knob(&mut columns[3], &sample_params.release, setter, 0.1);
+    ui.allocate_new_ui(UiBuilder::new().max_rect(panel_rect), |ui| {
+        Frame::new()
+            .fill(theme::BACKGROUND_COLOR_FOCUSED)
+            .stroke(Stroke::new(theme::STANDARD_STROKE, theme::BORDER_COLOR))
+            .corner_radius(theme::STANDARD_ROUNDING)
+            .inner_margin(Margin::same(theme::PANEL_PADDING as i8))
+            .show(ui, |ui| {
+                ui.set_width(corrected_width);
+                ui.set_height(corrected_height);
+
+                ui.vertical(|ui| {
+                    // Title header
+                    ui.horizontal(|ui| {
+                        ui.set_height(24.0); // Fixed header height
+                        ui.label(
+                            RichText::new(title)
+                                .size(14.0)
+                                .strong()
+                                .color(theme::TEXT_COLOR_ACCENT),
+                        );
+                    });
+
+                    // Content area - takes remaining space
+                    ui.allocate_new_ui(
+                        UiBuilder::new().max_rect(Rect::from_min_size(
+                            ui.cursor().min,
+                            Vec2::new(ui.available_width(), ui.available_height()),
+                        )),
+                        add_contents,
+                    );
+                });
             });
-        });
-    });
-}
-
-fn render_time_control_panel(
-    ui: &mut Ui,
-    sample_params: &SampleWrapperParams,
-    setter: &ParamSetter,
-) {
-    render_panel(ui, "Time Control", |ui| {
-        ui.horizontal(|ui| {
-            ui.columns(2, |columns| {
-                widgets::create_knob(&mut columns[0], &sample_params.trim_start, setter, 0.1);
-                widgets::create_knob(&mut columns[1], &sample_params.delay_start, setter, 0.1);
-            });
-        });
-    });
-}
-
-fn render_tonal_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
-    render_panel(ui, "Tonal", |ui| {
-        ui.vertical(|ui| {
-            widgets::create_checkbox(ui, &sample_params.is_tonal, setter);
-
-            // We don't need the thing to be tonal, we just disable root
-            // note when the value isn't checked
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Root Note:");
-                widgets::create_combo_box(
-                    ui,
-                    &sample_params.root_note,
-                    setter,
-                    sample_params.is_tonal.value(),
-                );
-            });
-
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.label("Semi:");
-                widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
-            });
-        });
-    });
-}
-
-fn render_gain_panel(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
-    render_panel(ui, "Gain", |ui| {
-        // Add horizontal layout to match other panels
-        ui.horizontal(|ui| {
-            ui.vertical_centered(|ui| {
-                widgets::create_knob(ui, &sample_params.gain, setter, 0.025);
-            });
-        });
-    });
-}
-
-fn render_control_panels(ui: &mut Ui, sample_params: &SampleWrapperParams, setter: &ParamSetter) {
-    ui.vertical(|ui| {
-        // Tonal Panel - full width at top
-        render_tonal_panel(ui, sample_params, setter);
-
-        ui.add_space(theme::PANEL_SPACING);
-
-        // ADSR and Gain panels - horizontal layout below
-        ui.horizontal_top(|ui| {
-            // Use horizontal_top for top alignment
-            // ADSR Panel - 40% width
-            let total_spacing = theme::PANEL_SPACING * 2.0;
-            let available_width = ui.available_width() - total_spacing;
-            let panel_height = 120.0;
-
-            // Calculate widths based on available space after spacing
-            let adsr_width = available_width * 0.4;
-            let time_width = available_width * 0.4;
-            let gain_width = available_width * 0.2;
-
-            ui.allocate_ui_with_layout(
-                Vec2::new(adsr_width, panel_height),
-                Layout::top_down(Align::LEFT),
-                |ui| {
-                    ui.set_min_size(Vec2::new(adsr_width, panel_height));
-                    render_adsr_panel(ui, sample_params, setter)
-                },
-            );
-
-            ui.add_space(theme::PANEL_SPACING);
-
-            // Add a placeholder panel
-            ui.allocate_ui_with_layout(
-                Vec2::new(time_width, panel_height),
-                Layout::top_down(Align::LEFT),
-                |ui| {
-                    ui.set_min_size(Vec2::new(adsr_width, panel_height));
-                    render_time_control_panel(ui, sample_params, setter)
-                },
-            );
-
-            ui.add_space(theme::PANEL_SPACING);
-
-            // Gain Panel - 20% width
-            ui.allocate_ui_with_layout(
-                Vec2::new(gain_width, panel_height),
-                Layout::top_down(Align::LEFT),
-                |ui| {
-                    ui.set_min_size(Vec2::new(gain_width, panel_height));
-                    render_gain_panel(ui, sample_params, setter)
-                },
-            );
-        });
-    });
+    })
+    .response
 }
 
 fn render_sample_info_strip(
@@ -226,7 +133,10 @@ fn render_sample_info_strip(
                     ui.set_min_width(ui.available_width() - theme::PANEL_SPACING * 2.);
                     ui.horizontal_centered(|ui| {
                         // Mute checkbox on the left
-                        widgets::create_checkbox(ui, &sample_params.muted, setter);
+                        let mut value = sample_params.muted.value();
+                        if ui.checkbox(&mut value, "Muted").clicked() {
+                            setter.set_parameter(&sample_params.muted, !value);
+                        }
 
                         ui.add_space(10.0);
 
@@ -365,23 +275,91 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
     new_tab
 }
 
+fn render_control_tonal_blend(ui: &mut Ui, params: &SampleWrapperParams, setter: &ParamSetter) {
+    let width = ui.available_width() - 2. * 8.;
+    ui.horizontal(|ui| {
+        render_panel(ui, "Tonal", width * 0.6, PANEL_HEIGHT, |ui| {
+            ui.vertical(|ui| {
+                widgets::create_checkbox(ui, &params.is_tonal, setter);
+
+                // We don't need the thing to be tonal, we just disable root
+                // note when the value isn't checked
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label("Root Note:");
+                    widgets::create_combo_box(
+                        ui,
+                        &params.root_note,
+                        setter,
+                        params.is_tonal.value(),
+                    );
+                });
+
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label("Semi:");
+                    widgets::create_integer_input(ui, &params.semitone_offset, setter);
+                });
+            });
+        });
+        render_panel(ui, "Sample Blend", width * 0.2, PANEL_HEIGHT, |ui| {});
+        render_panel(
+            ui,
+            "Global Blend Options",
+            width * 0.2,
+            PANEL_HEIGHT,
+            |ui| {},
+        );
+        // ui.label(format!("{}", ui.style().spacing.item_spacing.x))
+    });
+}
+
+fn render_control_adsr_time_gain(ui: &mut Ui, params: &SampleWrapperParams, setter: &ParamSetter) {
+    let width = ui.available_width() - 2. * 8.;
+    ui.horizontal(|ui| {
+        render_panel(ui, "Adsr", width * 0.4, PANEL_HEIGHT, |ui| {
+            ui.horizontal(|ui| {
+                ui.columns(4, |columns| {
+                    widgets::create_knob(&mut columns[0], &params.attack, setter, 0.1);
+                    widgets::create_knob(&mut columns[1], &params.decay, setter, 0.1);
+                    widgets::create_knob(&mut columns[2], &params.sustain, setter, 0.1);
+                    widgets::create_knob(&mut columns[3], &params.release, setter, 0.1);
+                });
+            });
+        });
+        render_panel(ui, "Time Control", width * 0.35, PANEL_HEIGHT, |ui| {
+            ui.horizontal(|ui| {
+                ui.columns(2, |columns| {
+                    widgets::create_knob(&mut columns[0], &params.trim_start, setter, 0.1);
+                    widgets::create_knob(&mut columns[1], &params.delay_start, setter, 0.1);
+                });
+            });
+        });
+        render_panel(ui, "Gain", width * 0.25, PANEL_HEIGHT, |ui| {
+            ui.horizontal(|ui| {
+                ui.vertical_centered(|ui| {
+                    widgets::create_knob(ui, &params.gain, setter, 0.025);
+                });
+            });
+        });
+        // ui.label(format!("{}", ui.style().spacing.item_spacing.x))
+    });
+}
+
 fn show_with_margin<R>(
     ui: &mut Ui,
     margins: (f32, f32),
-    layout: Layout,
     add_contents: impl FnOnce(&mut Ui) -> R,
 ) -> Response {
-    ui.allocate_ui_with_layout(
-        Vec2::new(
-            ui.available_width() - margins.0 * 2.,
-            ui.available_height() - margins.1 * 2.,
-        ),
-        layout,
-        add_contents,
-    )
-    .response
-}
+    let available_rect = ui.available_rect_before_wrap();
+    let margin_rect = Rect::from_min_size(
+        available_rect.min + Vec2::new(margins.0, margins.1),
+        available_rect.size() - Vec2::new(margins.0 * 2., margins.1 * 2.),
+    );
 
+    ui.allocate_new_ui(UiBuilder::new().max_rect(margin_rect), add_contents)
+        .response
+}
 pub fn create_editor(
     states: SharedStates,
     async_executor: AsyncExecutor<HardKickSampler>,
@@ -400,41 +378,26 @@ pub fn create_editor(
             let current_sample_params = &params.samples[current_tab];
 
             CentralPanel::default().show(ctx, |ui| {
-                show_with_margin(
-                    ui,
-                    (theme::PANEL_PADDING, theme::PANEL_PADDING),
-                    Layout::top_down(Align::LEFT),
-                    |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("Hard Kick Sampler").size(36.0).strong());
-                        });
+                show_with_margin(ui, (theme::PANEL_PADDING, theme::PANEL_PADDING), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("Hard Kick Sampler").size(36.0).strong());
+                    });
 
-                        ui.add_space(theme::SPACE_AMOUNT);
+                    current_tab = render_tabs(ui, current_tab);
 
-                        current_tab = render_tabs(ui, current_tab);
+                    ui.separator();
 
-                        ui.add_space(theme::SPACE_AMOUNT);
+                    // Render the first row of controls
+                    render_control_tonal_blend(ui, &current_sample_params, setter);
+                    render_control_adsr_time_gain(ui, &current_sample_params, setter);
 
-                        // Control panels in the middle
-                        render_control_panels(ui, current_sample_params, setter);
+                    // Sample info strip above waveform
+                    render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
 
-                        ui.add_space(theme::SPACE_AMOUNT);
-
-                        // Sample info strip above waveform
-                        render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
-
-                        ui.add_space(8.0);
-
-                        // Waveform display takes remaining space
-                        let waveform_data = states.wave_readers[current_tab].read().ok();
-                        render_waveform_display(
-                            ui,
-                            waveform_data.as_deref(),
-                            2,
-                            current_sample_params,
-                        );
-                    },
-                );
+                    // Waveform display takes remaining space
+                    let waveform_data = states.wave_readers[current_tab].read().ok();
+                    render_waveform_display(ui, waveform_data.as_deref(), 2, current_sample_params);
+                });
             });
 
             set_current_tab(ctx, current_tab);

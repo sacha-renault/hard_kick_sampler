@@ -142,11 +142,7 @@ impl Default for SampleWrapperParams {
             delay_start: FloatParam::new(
                 "Delay Start",
                 0.0,
-                FloatRange::Skewed {
-                    min: 0.,
-                    max: 5.,
-                    factor: FloatRange::skew_factor(-1.5),
-                },
+                FloatRange::Linear { min: 0., max: 0.5 },
             )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),
@@ -154,11 +150,7 @@ impl Default for SampleWrapperParams {
             trim_start: FloatParam::new(
                 "Trim Start",
                 0.0,
-                FloatRange::Skewed {
-                    min: 0.,
-                    max: 5.,
-                    factor: FloatRange::skew_factor(-1.5),
-                },
+                FloatRange::Linear { min: 0., max: 0.5 },
             )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),

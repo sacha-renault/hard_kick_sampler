@@ -88,6 +88,7 @@ pub fn create_combo_box(
     is_enabled: bool,
 ) -> Response {
     ui.horizontal(|ui| {
+        ui.style_mut().spacing.item_spacing.x = 0.;
         for root in 0..12 {
             let checked = param.value() == root;
             let response = ui.add_enabled(
