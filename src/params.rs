@@ -64,7 +64,13 @@ impl Default for SampleWrapperParams {
                 }
             })),
 
-            is_tonal: BoolParam::new("Tonal", true),
+            is_tonal: BoolParam::new("Tonal", true).with_value_to_string(Arc::new(|value| {
+                if value {
+                    String::from("Tonal")
+                } else {
+                    String::from("Atonal")
+                }
+            })),
 
             gain: FloatParam::new(
                 "Gain",
@@ -158,6 +164,13 @@ impl Default for SampleWrapperParams {
     }
 }
 
+#[derive(Debug, Enum, PartialEq)]
+pub enum BlendGroup {
+    None,
+    Start,
+    End,
+}
+
 #[derive(Params, Debug)]
 pub struct HardKickSamplerParams {
     /// The parameter's ID is used to identify the parameter in the wrappred plugin API. As long as
@@ -166,6 +179,15 @@ pub struct HardKickSamplerParams {
     /// gain parameter is stored as linear gain while the values are displayed in decibels.
     #[id = "gain"]
     pub gain: FloatParam,
+
+    #[id = "blend_time"]
+    pub blend_time: FloatParam,
+
+    #[id = "blend_transition"]
+    pub blend_transition: FloatParam,
+
+    #[id = "blend_group"]
+    pub blend_group: EnumParam<BlendGroup>,
 
     #[nested(array, group = "Samples")]
     pub samples: [SampleWrapperParams; MAX_SAMPLES],
@@ -187,6 +209,25 @@ impl Default for HardKickSamplerParams {
             .with_unit(" dB")
             .with_value_to_string(formatters::v2s_f32_gain_to_db(2))
             .with_string_to_value(formatters::s2v_f32_gain_to_db()),
+
+            blend_time: FloatParam::new(
+                "Blend Time",
+                0.0,
+                FloatRange::Linear { min: 0., max: 0.5 },
+            )
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            blend_transition: FloatParam::new(
+                "Blend Transition Time",
+                0.0,
+                FloatRange::Linear { min: 0., max: 0.5 },
+            )
+            .with_unit(" s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            blend_group: EnumParam::<BlendGroup>::new("Blend Group", BlendGroup::None),
+
             samples: [(); MAX_SAMPLES].map(|_| SampleWrapperParams::default()),
         }
     }

@@ -11,7 +11,7 @@ use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
 use crate::editor::waveform::render_waveform_stereo;
-use crate::params::{HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
+use crate::params::{BlendGroup, HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
@@ -275,40 +275,82 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
     new_tab
 }
 
-fn render_control_tonal_blend(ui: &mut Ui, params: &SampleWrapperParams, setter: &ParamSetter) {
+fn render_control_tonal_blend(
+    ui: &mut Ui,
+    global_params: &HardKickSamplerParams,
+    sample_params: &SampleWrapperParams,
+    setter: &ParamSetter,
+) {
     let width = ui.available_width() - 2. * 8.;
     ui.horizontal(|ui| {
-        render_panel(ui, "Tonal", width * 0.6, PANEL_HEIGHT, |ui| {
+        let (tonal_width, sample_width, global_width) = (0.5, 0.15, 0.35);
+        render_panel(ui, "Tonal", width * tonal_width, PANEL_HEIGHT, |ui| {
             ui.vertical(|ui| {
-                widgets::create_checkbox(ui, &params.is_tonal, setter);
-
-                // We don't need the thing to be tonal, we just disable root
-                // note when the value isn't checked
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.label("Root Note:");
-                    widgets::create_combo_box(
-                        ui,
-                        &params.root_note,
-                        setter,
-                        params.is_tonal.value(),
-                    );
-                });
-
-                ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label("Semi:");
-                    widgets::create_integer_input(ui, &params.semitone_offset, setter);
+                    widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
                 });
+
+                ui.add_space(8.0);
+
+                widgets::create_toggle_button(ui, &sample_params.is_tonal, setter);
+
+                ui.add_space(8.0);
+                widgets::create_combo_box(
+                    ui,
+                    &sample_params.root_note,
+                    setter,
+                    sample_params.is_tonal.value(),
+                );
             });
         });
-        render_panel(ui, "Sample Blend", width * 0.2, PANEL_HEIGHT, |ui| {});
+        render_panel(
+            ui,
+            "Sample Blend",
+            width * sample_width,
+            PANEL_HEIGHT,
+            |ui| {
+                let current_group = global_params.blend_group.value();
+                if ui
+                    .radio(current_group == BlendGroup::None, "None")
+                    .clicked()
+                {
+                    setter.set_parameter(&global_params.blend_group, BlendGroup::None);
+                }
+                if ui
+                    .radio(current_group == BlendGroup::Start, "Start")
+                    .clicked()
+                {
+                    setter.set_parameter(&global_params.blend_group, BlendGroup::Start);
+                }
+                if ui.radio(current_group == BlendGroup::End, "End").clicked() {
+                    setter.set_parameter(&global_params.blend_group, BlendGroup::End);
+                }
+            },
+        );
         render_panel(
             ui,
             "Global Blend Options",
-            width * 0.2,
+            width * global_width,
             PANEL_HEIGHT,
-            |ui| {},
+            |ui| {
+                ui.horizontal(|ui| {
+                    ui.columns(2, |columns| {
+                        widgets::create_knob(
+                            &mut columns[0],
+                            &global_params.blend_time,
+                            setter,
+                            0.1,
+                        );
+                        widgets::create_knob(
+                            &mut columns[1],
+                            &global_params.blend_transition,
+                            setter,
+                            0.1,
+                        );
+                    });
+                });
+            },
         );
         // ui.label(format!("{}", ui.style().spacing.item_spacing.x))
     });
@@ -388,7 +430,7 @@ pub fn create_editor(
                     ui.separator();
 
                     // Render the first row of controls
-                    render_control_tonal_blend(ui, &current_sample_params, setter);
+                    render_control_tonal_blend(ui, &params, &current_sample_params, setter);
                     render_control_adsr_time_gain(ui, &current_sample_params, setter);
 
                     // Sample info strip above waveform
