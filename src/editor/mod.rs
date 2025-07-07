@@ -346,17 +346,20 @@ fn paint_rect(ui: &mut Ui, height: f32, width: f32) -> Rect {
 }
 
 fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
+    // Current tab
     let mut new_tab = current_tab;
 
     ui.horizontal(|ui| {
-        for tab in (0..MAX_SAMPLES).rev() {
-            if ui
-                .selectable_label(current_tab == tab, format!("Sample {}", tab + 1))
-                .clicked()
-            {
-                new_tab = tab;
+        ui.columns(MAX_SAMPLES, |ui| {
+            for (tab, sub_ui) in ui.iter_mut().enumerate() {
+                if sub_ui
+                    .selectable_label(current_tab == tab, format!("Sample {}", tab + 1))
+                    .clicked()
+                {
+                    new_tab = tab;
+                }
             }
-        }
+        })
     });
 
     new_tab
@@ -402,14 +405,13 @@ pub fn create_editor(
                     (theme::PANEL_PADDING, theme::PANEL_PADDING),
                     Layout::top_down(Align::LEFT),
                     |ui| {
-                        // Header with title and tabs
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new("Hard Kick Sampler").size(24.0).strong());
-
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                current_tab = render_tabs(ui, current_tab);
-                            });
+                            ui.label(RichText::new("Hard Kick Sampler").size(36.0).strong());
                         });
+
+                        ui.add_space(theme::SPACE_AMOUNT);
+
+                        current_tab = render_tabs(ui, current_tab);
 
                         ui.add_space(theme::SPACE_AMOUNT);
 
