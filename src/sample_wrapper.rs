@@ -39,10 +39,10 @@ pub struct SampleWrapper {
     host_sample_rate: f32,
 
     /// Sample rate of the sample itself, not the process sr
-    sample_rate: u32,
+    sample_rate: f32,
 
     /// Save where we are in the sample
-    playback_position: f32,
+    raw_playback_position: f32,
 
     /// Current trigerred note
     midi_note: Option<i8>,
@@ -87,8 +87,8 @@ impl SampleWrapper {
             params,
             index,
             buffer: None,
-            playback_position: 0.,
-            sample_rate: 0,
+            raw_playback_position: 0.,
+            sample_rate: 0.,
             host_sample_rate: DEFAULT_SAMPLE_RATE,
             midi_note: None,
             num_channel: 0,
@@ -116,9 +116,8 @@ impl SampleWrapper {
             self.midi_note = Some(semitone_offset);
 
             // Reset playback position to position defined as start
-            let sample_per_second = self.sample_rate as f32;
             let delay_start = self.get_params().trim_start.value();
-            self.playback_position = sample_per_second * delay_start;
+            self.raw_playback_position = self.sample_rate * delay_start;
 
             // Trigger the adsr
             self.adsr.note_on();
@@ -173,7 +172,7 @@ impl SampleWrapper {
         audio_data: AudioData,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Set the buffer and sample rate
-        self.sample_rate = audio_data.spec.sample_rate;
+        self.sample_rate = audio_data.spec.sample_rate as f32;
         self.write_two_buffers(Some(audio_data.data));
 
         // If buffer is loaded, we set the sample path
@@ -189,7 +188,7 @@ impl SampleWrapper {
     pub fn clear_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // Reset data
         self.write_two_buffers(None);
-        self.sample_rate = 0;
+        self.sample_rate = 0.;
         self.adsr.reset();
         match self.get_params().sample_path.write() {
             Ok(mut path) => *path = None,
@@ -222,7 +221,7 @@ impl SampleWrapper {
         let audio = utils::load_audio_file(&file_path)?;
 
         // Set the buffer and sample rate
-        self.sample_rate = audio.spec.sample_rate;
+        self.sample_rate = audio.spec.sample_rate as f32;
         self.write_two_buffers(Some(audio.data));
         Ok(())
     }
@@ -233,7 +232,7 @@ impl SampleWrapper {
     /// is applied when retrieving the position via `get_playback_position()`.
     #[inline]
     pub fn increment_playback_position(&mut self) {
-        self.playback_position += self.get_sr_correction();
+        self.raw_playback_position += self.get_sr_correction();
     }
 
     /// Calculates the current playback rate based on pitch shifting parameters.
@@ -271,7 +270,7 @@ impl SampleWrapper {
     /// the appropriate sample index for interleaved audio data.
     #[inline]
     pub fn get_playback_position(&self, channel_index: usize) -> usize {
-        (self.get_playback_rate() * self.playback_position) as usize * self.num_channel
+        (self.get_playback_rate() * self.raw_playback_position) as usize * self.num_channel
             + channel_index
     }
 
@@ -281,7 +280,7 @@ impl SampleWrapper {
     /// and the host's sample rate to maintain proper playback timing.
     #[inline]
     pub fn get_sr_correction(&self) -> f32 {
-        self.sample_rate as f32 / self.host_sample_rate
+        self.sample_rate / self.host_sample_rate
     }
 
     /// Completely resets and clears the sample wrapper.
@@ -293,7 +292,7 @@ impl SampleWrapper {
         self.write_two_buffers(None);
 
         // Reset playback state
-        self.playback_position = 0.0;
+        self.raw_playback_position = 0.0;
         self.midi_note = None;
 
         // Reset ADSR envelope
@@ -307,7 +306,7 @@ impl SampleWrapper {
     pub fn reset(&mut self) {
         self.adsr.reset();
         self.midi_note = None;
-        self.playback_position = 0.;
+        self.raw_playback_position = 0.;
     }
 
     /// Returns whether this sample is currently muted.
@@ -365,19 +364,33 @@ impl SampleWrapper {
         // to be processed
         let is_first_channel = channel_index == 0;
 
-        if let Some(buffer) = self.buffer.as_ref() {
-            // Get the sample_index
-            let sample_index = self.get_playback_position(channel_index);
+        // Get the sample_index
+        let num_frames_delay = self.get_params().delay_start.value() * self.sample_rate;
+        let sample_index = self.get_playback_position(channel_index);
 
+        // Update playback position only on the first channel of the frame
+        if is_first_channel {
+            self.increment_playback_position();
+        }
+
+        let final_sample_index = match utils::clipping_sub(
+            sample_index,
+            (num_frames_delay * self.num_channel as f32) as usize,
+        ) {
+            Some(v) => v,
+            None => return 0.,
+        };
+
+        if let Some(buffer) = self.buffer.as_ref() {
             // depending on if it'the value is Some or None
             let sample_value = match (
-                buffer.get(sample_index),
-                buffer.get(sample_index + self.num_channel),
+                buffer.get(final_sample_index),
+                buffer.get(final_sample_index + self.num_channel),
             ) {
                 // Case were current value and next value are both defined
                 // We can interpolate
                 (Some(value), Some(value_next)) => {
-                    let fraction = self.playback_position.fract();
+                    let fraction = self.raw_playback_position.fract();
                     utils::interpolate(*value, *value_next, fraction)
                 }
 
@@ -392,11 +405,6 @@ impl SampleWrapper {
                     return 0.0;
                 }
             };
-
-            // Update playback position only on the first channel of the frame
-            if is_first_channel {
-                self.increment_playback_position();
-            }
 
             // Load parameter
             let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);

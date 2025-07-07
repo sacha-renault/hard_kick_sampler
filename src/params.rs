@@ -93,7 +93,8 @@ impl Default for SampleWrapperParams {
                 0,
                 IntRange::Linear { min: -24, max: 24 },
             )
-            .with_unit(" semitones"),
+            .with_unit(" semitones")
+            .non_automatable(),
 
             // ADSR Parameters
             attack: FloatParam::new(
