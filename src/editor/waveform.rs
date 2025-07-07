@@ -1,3 +1,4 @@
+use egui::Color32;
 use egui_plot::*;
 
 pub fn render_waveform_stereo(
@@ -32,7 +33,14 @@ pub fn render_waveform_stereo(
         .show(ui, |ui| {
             ui.line(Line::new(
                 channel_index.to_string(),
-                PlotPoints::from_iter(silent_data.into_iter().chain(plot_data)),
+                PlotPoints::from_iter(plot_data),
             ));
+            ui.line(
+                Line::new(
+                    channel_index.to_string(),
+                    PlotPoints::from_iter(silent_data),
+                )
+                .color(Color32::GREEN),
+            );
         });
 }
