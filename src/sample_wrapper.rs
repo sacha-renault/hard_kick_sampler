@@ -227,35 +227,58 @@ impl SampleWrapper {
         Ok(())
     }
 
-    /// Advances the playback position based on pitch shifting parameters.
+    /// Advances the raw playback position by one sample period, corrected for sample rate differences.
+    ///
+    /// This tracks elapsed time independently of pitch shifting - the actual playback rate
+    /// is applied when retrieving the position via `get_playback_position()`.
+    #[inline]
+    pub fn increment_playback_position(&mut self) {
+        self.playback_position += self.get_sr_correction();
+    }
+
+    /// Calculates the current playback rate based on pitch shifting parameters.
     ///
     /// The playback rate is calculated using the formula: `2^(semitone_offset / 12)`
     /// where semitone_offset combines:
-    /// - MIDI note offset from C3 (if tonal mode is enabled)
-    /// - Root note parameter (original pitch of the sample)
-    /// - Semitone offset parameter (additional fine tuning)
+    /// - Semitone offset parameter (user fine tuning adjustment)
+    /// - MIDI note offset from root note (if tonal mode is enabled)
     ///
-    /// If `is_tonal` parameter is false, MIDI note has no influence on pitch.
+    /// If `is_tonal` parameter is false, MIDI note AND the root note has no influence on pitch.
+    ///
+    /// Returns a multiplier where 1.0 = original speed, 2.0 = double speed (octave up),
+    /// 0.5 = half speed (octave down).
     #[inline]
-    pub fn increment_playback_position(&mut self) {
+    pub fn get_playback_rate(&self) -> f32 {
         // Parameter offset (user tuning adjustment)
         let param_note_offset = self.get_params().semitone_offset.value() as f32;
 
         // MIDI note offset from root note
         let midi_note_offset = if self.get_params().is_tonal.value() {
-            self.midi_note.unwrap_or(0) as f32
+            let midi_offset = self.midi_note.unwrap_or(0) as f32;
+            let root_note = self.get_params().root_note.value() as f32;
+            midi_offset - root_note
         } else {
             0.
         };
 
-        // Get root note
-        let root_note = self.get_params().root_note.value() as f32;
-
-        let final_offset = midi_note_offset + param_note_offset - root_note;
-        let playback_rate = 2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE);
-        self.playback_position += playback_rate * self.get_sr_correction();
+        let final_offset = param_note_offset + midi_note_offset;
+        2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE)
     }
 
+    /// Get the pitch-adjusted playback position for a specific audio channel.
+    ///
+    /// Applies the current playback rate to the raw playback position and calculates
+    /// the appropriate sample index for interleaved audio data.
+    #[inline]
+    pub fn get_playback_position(&self, channel_index: usize) -> usize {
+        (self.get_playback_rate() * self.playback_position) as usize * self.num_channel
+            + channel_index
+    }
+
+    /// Returns the sample rate correction factor.
+    ///
+    /// This accounts for differences between the sample's original sample rate
+    /// and the host's sample rate to maintain proper playback timing.
     #[inline]
     pub fn get_sr_correction(&self) -> f32 {
         self.sample_rate as f32 / self.host_sample_rate
@@ -393,12 +416,6 @@ impl SampleWrapper {
         } else {
             0.0
         }
-    }
-
-    /// Get the playback position stereo corrected
-    #[inline]
-    pub fn get_playback_position(&self, channel_index: usize) -> usize {
-        self.playback_position as usize * self.num_channel + channel_index
     }
 
     #[inline]

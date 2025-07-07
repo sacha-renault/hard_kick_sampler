@@ -135,7 +135,7 @@ fn render_sample_info_strip(
                         // Mute checkbox on the left
                         let mut value = sample_params.muted.value();
                         if ui.checkbox(&mut value, "Muted").clicked() {
-                            setter.set_parameter(&sample_params.muted, !value);
+                            setter.set_parameter(&sample_params.muted, value);
                         }
 
                         ui.add_space(10.0);
