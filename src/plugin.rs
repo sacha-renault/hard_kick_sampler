@@ -194,7 +194,7 @@ impl Plugin for HardKickSampler {
 
                 // each sample provide its next value
                 // Sum all playing samples
-                for sample_wrapper in &mut self.sample_wrappers {
+                for sample_wrapper in self.sample_wrappers.iter_mut() {
                     *sample += sample_wrapper.next(channel_index);
                 }
 
@@ -203,16 +203,28 @@ impl Plugin for HardKickSampler {
             }
         }
 
+        // Update the position once per processed block
+        // Allowing for the GUI to `see` where the buffer is at
+        // In the lecture of the buffer
+        for sample_wrapper in self.sample_wrappers.iter_mut() {
+            sample_wrapper.update_shared_position();
+        }
+
         ProcessStatus::Normal
     }
 
     fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         let state = SharedStates {
             params: self.params.clone(),
-            wave_readers: self
+            shared_buffer: self
                 .sample_wrappers
                 .iter()
-                .map(|s| s.get_wave_reader())
+                .map(|s| s.get_shared_buffer())
+                .collect(),
+            positions: self
+                .sample_wrappers
+                .iter()
+                .map(|s| s.get_shared_position())
                 .collect(),
         };
         create_editor(state, async_executor)

@@ -437,7 +437,7 @@ pub fn create_editor(
                     render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
 
                     // Waveform display takes remaining space
-                    let waveform_data = states.wave_readers[current_tab].read().ok();
+                    let waveform_data = states.shared_buffer[current_tab].read().ok();
                     render_waveform_display(ui, waveform_data.as_deref(), 2, current_sample_params);
                 });
             });

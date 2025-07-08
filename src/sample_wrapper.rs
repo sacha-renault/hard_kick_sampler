@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 use nih_plug::nih_error;
@@ -53,8 +54,12 @@ pub struct SampleWrapper {
     /// The adsr envelope
     adsr: MultiChannelAdsr,
 
-    /// the reader of the buffer
+    // HERE ARE THE DATA THAT ARE SHARED WITH THE GUI
+    /// A copy of the buffer that the GUI can access for display
     shared_buffer: Arc<RwLock<Vec<f32>>>,
+
+    /// A copy of the current position in the sample
+    shared_playback_position: Arc<AtomicU64>,
 }
 
 impl SampleWrapper {
@@ -93,7 +98,10 @@ impl SampleWrapper {
             midi_note: None,
             num_channel: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
+
+            // THINGS FOR GUI
             shared_buffer: Arc::new(RwLock::new(Vec::new())),
+            shared_playback_position: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -435,7 +443,18 @@ impl SampleWrapper {
         }
     }
 
-    pub fn get_wave_reader(&self) -> Arc<RwLock<Vec<f32>>> {
+    pub fn get_shared_buffer(&self) -> Arc<RwLock<Vec<f32>>> {
         self.shared_buffer.clone()
+    }
+
+    pub fn get_shared_position(&self) -> Arc<AtomicU64> {
+        self.shared_playback_position.clone()
+    }
+
+    pub fn update_shared_position(&mut self) {
+        let current_position = self.get_playback_position(0);
+        let _ = self
+            .shared_playback_position
+            .store(current_position as u64, Ordering::Relaxed);
     }
 }
