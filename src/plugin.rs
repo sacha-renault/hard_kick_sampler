@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::editor::create_editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
-use crate::sample_wrapper::SampleWrapper;
+use crate::sample_wrapper::SamplePlayer;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
@@ -14,7 +14,7 @@ pub struct HardKickSampler {
     params: Arc<HardKickSamplerParams>,
 
     // Sample wrapper
-    sample_wrappers: Vec<SampleWrapper>,
+    sample_players: Vec<SamplePlayer>,
 
     // The task receiver
     receiver: Option<std::sync::mpsc::Receiver<TaskResults>>,
@@ -27,11 +27,11 @@ impl Default for HardKickSampler {
     fn default() -> Self {
         let params = Arc::new(HardKickSamplerParams::default());
         let sample_wrappers = (0..MAX_SAMPLES)
-            .map(|index| SampleWrapper::new(params.clone(), index))
+            .map(|index| SamplePlayer::new(params.clone(), index))
             .collect();
         Self {
             params: params.clone(),
-            sample_wrappers,
+            sample_players: sample_wrappers,
             receiver: None,
             process_count: 0.,
         }
@@ -60,7 +60,7 @@ impl HardKickSampler {
     /// Trigger the samples to play for all the ones that are loaded
     fn start_sample(&mut self, note: u8, velocity: f32) {
         self.process_count = 0.;
-        for sample in self.sample_wrappers.iter_mut() {
+        for sample in self.sample_players.iter_mut() {
             sample.start_playing(note, velocity);
         }
     }
@@ -69,7 +69,7 @@ impl HardKickSampler {
     /// because we don't handle multi notes playing in the same
     /// time anyway
     fn stop_sample(&mut self) {
-        for sample in self.sample_wrappers.iter_mut() {
+        for sample in self.sample_players.iter_mut() {
             sample.stop_playing();
         }
     }
@@ -85,12 +85,12 @@ impl HardKickSampler {
         while let Ok(task) = receiver.try_recv() {
             match task {
                 TaskResults::LoadedFile(index, path, data) => {
-                    self.sample_wrappers
+                    self.sample_players
                         .get_mut(index)
                         .map(|sample| sample.load_and_set_audio_file(&path, data));
                 }
                 TaskResults::ClearSample(index) => {
-                    self.sample_wrappers
+                    self.sample_players
                         .get_mut(index)
                         .map(|sample| sample.clear_sample());
                 }
@@ -155,7 +155,7 @@ impl Plugin for HardKickSampler {
         // init a bool that knows if everything went well
         let mut success = true;
 
-        for (index, sample_wrapper) in self.sample_wrappers.iter_mut().enumerate() {
+        for (index, sample_wrapper) in self.sample_players.iter_mut().enumerate() {
             sample_wrapper.cleanup_wrapper();
             sample_wrapper.change_sample_rate_output(buffer_config.sample_rate);
             sample_wrapper.change_channel_number(num_channel as usize);
@@ -172,7 +172,7 @@ impl Plugin for HardKickSampler {
     fn reset(&mut self) {
         // Reset buffers and envelopes here. This can be called from the audio thread and may not
         // allocate. You can remove this function if you do not need it.
-        for sample_wrapper in self.sample_wrappers.iter_mut() {
+        for sample_wrapper in self.sample_players.iter_mut() {
             sample_wrapper.reset();
         }
     }
@@ -194,7 +194,7 @@ impl Plugin for HardKickSampler {
         // In the lecture of the buffer
         // It also checks is all samples finished to play
         let mut all_silent = true;
-        for sample_wrapper in self.sample_wrappers.iter_mut() {
+        for sample_wrapper in self.sample_players.iter_mut() {
             sample_wrapper.update_shared_position(self.process_count);
             all_silent &= sample_wrapper.is_silent();
         }
@@ -215,7 +215,7 @@ impl Plugin for HardKickSampler {
 
                 // each sample provide its next value
                 // Sum all playing samples
-                for sample_wrapper in self.sample_wrappers.iter_mut() {
+                for sample_wrapper in self.sample_players.iter_mut() {
                     *sample += sample_wrapper.next(self.process_count, channel_index);
                 }
 
@@ -231,12 +231,12 @@ impl Plugin for HardKickSampler {
         let state = SharedStates {
             params: self.params.clone(),
             shared_buffer: self
-                .sample_wrappers
+                .sample_players
                 .iter()
                 .map(|s| s.get_shared_buffer())
                 .collect(),
             positions: self
-                .sample_wrappers
+                .sample_players
                 .iter()
                 .map(|s| s.get_shared_position())
                 .collect(),

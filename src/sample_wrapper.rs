@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use nih_plug::nih_error;
 
 use crate::adsr::MultiChannelAdsr;
-use crate::params::{HardKickSamplerParams, SampleWrapperParams};
+use crate::params::{HardKickSamplerParams, SamplePlayerParams};
 use crate::tasks::AudioData;
 use crate::utils;
 
@@ -26,7 +26,7 @@ const SEMITONE_PER_OCTAVE: f32 = 12.;
 /// - ADSR envelope shaping
 /// - Smooth parameter interpolation
 /// - Sample rate conversion
-pub struct SampleWrapper {
+pub struct SamplePlayer {
     /// A ref to the params
     params: Arc<HardKickSamplerParams>,
 
@@ -59,12 +59,12 @@ pub struct SampleWrapper {
     shared_playback_position: Arc<AtomicU64>,
 }
 
-impl SampleWrapper {
+impl SamplePlayer {
     /// Returns a reference to the parameters specific to this sample wrapper.
     ///
     /// This is a convenience method to access the sample-specific parameters
     /// from the shared parameter structure.
-    fn get_params(&self) -> &SampleWrapperParams {
+    fn get_params(&self) -> &SamplePlayerParams {
         &self.params.samples[self.index]
     }
 

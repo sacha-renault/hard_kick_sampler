@@ -11,7 +11,7 @@ use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
 use crate::editor::waveform::render_waveform_stereo;
-use crate::params::{BlendGroup, HardKickSamplerParams, SampleWrapperParams, MAX_SAMPLES};
+use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
@@ -29,7 +29,7 @@ fn set_current_tab(ctx: &Context, current_tab: usize) {
     });
 }
 
-fn get_sample_name(sample_params: &SampleWrapperParams) -> Option<String> {
+fn get_sample_name(sample_params: &SamplePlayerParams) -> Option<String> {
     sample_params.sample_path.read().ok().and_then(|guard| {
         guard.as_ref().and_then(|path| {
             path.file_name()
@@ -39,7 +39,7 @@ fn get_sample_name(sample_params: &SampleWrapperParams) -> Option<String> {
     })
 }
 
-fn get_sample_path(sample_params: &SampleWrapperParams) -> Option<String> {
+fn get_sample_path(sample_params: &SamplePlayerParams) -> Option<String> {
     sample_params.sample_path.read().ok().and_then(|guard| {
         guard
             .as_ref()
@@ -202,7 +202,7 @@ fn render_waveform_display(
     ui: &mut Ui,
     waveform_data: Option<&Vec<f32>>,
     num_channels: usize,
-    params: &SampleWrapperParams,
+    params: &SamplePlayerParams,
 ) {
     // Render image if needed
     match waveform_data {
@@ -286,7 +286,7 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
 fn render_control_tonal_blend(
     ui: &mut Ui,
     global_params: &HardKickSamplerParams,
-    sample_params: &SampleWrapperParams,
+    sample_params: &SamplePlayerParams,
     setter: &ParamSetter,
 ) {
     let width = ui.available_width() - 2. * 8.;
@@ -364,7 +364,7 @@ fn render_control_tonal_blend(
     });
 }
 
-fn render_control_adsr_time_gain(ui: &mut Ui, params: &SampleWrapperParams, setter: &ParamSetter) {
+fn render_control_adsr_time_gain(ui: &mut Ui, params: &SamplePlayerParams, setter: &ParamSetter) {
     let width = ui.available_width() - 2. * 8.;
     ui.horizontal(|ui| {
         render_panel(ui, "Adsr", width * 0.4, PANEL_HEIGHT, |ui| {

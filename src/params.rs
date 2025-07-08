@@ -10,7 +10,7 @@ use crate::utils;
 pub const MAX_SAMPLES: usize = 8;
 
 #[derive(Params, Debug)]
-pub struct SampleWrapperParams {
+pub struct SamplePlayerParams {
     #[persist = "sample_path"]
     pub sample_path: Arc<RwLock<Option<PathBuf>>>,
 
@@ -51,7 +51,7 @@ pub struct SampleWrapperParams {
     pub delay_start: FloatParam,
 }
 
-impl Default for SampleWrapperParams {
+impl Default for SamplePlayerParams {
     fn default() -> Self {
         Self {
             sample_path: Arc::new(RwLock::new(None)),
@@ -191,7 +191,7 @@ pub struct HardKickSamplerParams {
     pub blend_group: EnumParam<BlendGroup>,
 
     #[nested(array, group = "Samples")]
-    pub samples: [SampleWrapperParams; MAX_SAMPLES],
+    pub samples: [SamplePlayerParams; MAX_SAMPLES],
 }
 
 impl Default for HardKickSamplerParams {
@@ -229,7 +229,7 @@ impl Default for HardKickSamplerParams {
 
             blend_group: EnumParam::<BlendGroup>::new("Blend Group", BlendGroup::None),
 
-            samples: [(); MAX_SAMPLES].map(|_| SampleWrapperParams::default()),
+            samples: [(); MAX_SAMPLES].map(|_| SamplePlayerParams::default()),
         }
     }
 }
