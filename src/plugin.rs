@@ -18,6 +18,9 @@ pub struct HardKickSampler {
 
     // The task receiver
     receiver: Option<std::sync::mpsc::Receiver<TaskResults>>,
+
+    // the number of blocks processed since note started
+    process_count: f32,
 }
 
 impl Default for HardKickSampler {
@@ -30,6 +33,7 @@ impl Default for HardKickSampler {
             params: params.clone(),
             sample_wrappers,
             receiver: None,
+            process_count: 0.,
         }
     }
 }
@@ -55,6 +59,7 @@ impl HardKickSampler {
 
     /// Trigger the samples to play for all the ones that are loaded
     fn start_sample(&mut self, note: u8, velocity: f32) {
+        self.process_count = 0.;
         for sample in self.sample_wrappers.iter_mut() {
             sample.start_playing(note, velocity);
         }
@@ -184,10 +189,26 @@ impl Plugin for HardKickSampler {
         // Handle the context
         self.handle_context(context);
 
+        // Update the position once per processed block
+        // Allowing for the GUI to `see` where the buffer is at
+        // In the lecture of the buffer
+        // It also checks is all samples finished to play
+        let mut all_silent = true;
+        for sample_wrapper in self.sample_wrappers.iter_mut() {
+            sample_wrapper.update_shared_position(self.process_count);
+            all_silent &= sample_wrapper.is_silent();
+        }
+
+        if all_silent {
+            // If all samples are silent, we can just return as it is
+            return ProcessStatus::Normal;
+        }
+
         // Audio processing
         for channel_samples in buffer.iter_samples() {
             // Smoothing is optionally built into the parameters themselves
             let gain = self.params.gain.smoothed.next();
+            self.process_count += 1.;
 
             for (channel_index, sample) in channel_samples.into_iter().enumerate() {
                 *sample = 0.;
@@ -195,19 +216,12 @@ impl Plugin for HardKickSampler {
                 // each sample provide its next value
                 // Sum all playing samples
                 for sample_wrapper in self.sample_wrappers.iter_mut() {
-                    *sample += sample_wrapper.next(channel_index);
+                    *sample += sample_wrapper.next(self.process_count, channel_index);
                 }
 
                 // apply gain
                 *sample *= gain;
             }
-        }
-
-        // Update the position once per processed block
-        // Allowing for the GUI to `see` where the buffer is at
-        // In the lecture of the buffer
-        for sample_wrapper in self.sample_wrappers.iter_mut() {
-            sample_wrapper.update_shared_position();
         }
 
         ProcessStatus::Normal

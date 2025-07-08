@@ -42,9 +42,6 @@ pub struct SampleWrapper {
     /// Sample rate of the sample itself, not the process sr
     sample_rate: f32,
 
-    /// Save where we are in the sample
-    raw_playback_position: f32,
-
     /// Current trigerred note
     midi_note: Option<i8>,
 
@@ -84,15 +81,16 @@ impl SampleWrapper {
     pub fn new(params: Arc<HardKickSamplerParams>, index: usize) -> Self {
         // Ensure the index is not out of range
         assert!(
-            params.samples.len() >= index,
-            "Index of the sample is more than the maximum"
+            index < params.samples.len(),
+            "Sample index {} is out of bounds (max: {})",
+            index,
+            params.samples.len()
         );
 
         Self {
             params,
             index,
             buffer: None,
-            raw_playback_position: 0.,
             sample_rate: 0.,
             host_sample_rate: DEFAULT_SAMPLE_RATE,
             midi_note: None,
@@ -122,10 +120,6 @@ impl SampleWrapper {
 
             // Set the note that is currently playing
             self.midi_note = Some(semitone_offset);
-
-            // Reset playback position to position defined as start
-            let delay_start = self.get_params().trim_start.value();
-            self.raw_playback_position = self.sample_rate * delay_start;
 
             // Trigger the adsr
             self.adsr.note_on();
@@ -234,15 +228,6 @@ impl SampleWrapper {
         Ok(())
     }
 
-    /// Advances the raw playback position by one sample period, corrected for sample rate differences.
-    ///
-    /// This tracks elapsed time independently of pitch shifting - the actual playback rate
-    /// is applied when retrieving the position via `get_playback_position()`.
-    #[inline]
-    pub fn increment_playback_position(&mut self) {
-        self.raw_playback_position += self.get_sr_correction();
-    }
-
     /// Calculates the current playback rate based on pitch shifting parameters.
     ///
     /// The playback rate is calculated using the formula: `2^(semitone_offset / 12)`
@@ -276,10 +261,22 @@ impl SampleWrapper {
     ///
     /// Applies the current playback rate to the raw playback position and calculates
     /// the appropriate sample index for interleaved audio data.
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (sample_index, fractional_part) where:
+    /// - `sample_index` is the integer sample position in the interleaved buffer
+    /// - `fractional_part` is the sub-sample position for interpolation (0.0 to 1.0)
     #[inline]
-    pub fn get_playback_position(&self, channel_index: usize) -> usize {
-        (self.get_playback_rate() * self.raw_playback_position) as usize * self.num_channel
-            + channel_index
+    pub fn get_playback_position(&self, process_count: f32, channel_index: usize) -> (usize, f32) {
+        let raw_playback_position = process_count * self.get_sr_correction();
+        let pitched_position = self.get_playback_rate() * raw_playback_position;
+
+        let frame_index = pitched_position as usize;
+        let fraction = pitched_position.fract();
+        let sample_index = frame_index * self.num_channel + channel_index;
+
+        (sample_index, fraction)
     }
 
     /// Returns the sample rate correction factor.
@@ -300,7 +297,6 @@ impl SampleWrapper {
         self.write_two_buffers(None);
 
         // Reset playback state
-        self.raw_playback_position = 0.0;
         self.midi_note = None;
 
         // Reset ADSR envelope
@@ -314,7 +310,6 @@ impl SampleWrapper {
     pub fn reset(&mut self) {
         self.adsr.reset();
         self.midi_note = None;
-        self.raw_playback_position = 0.;
     }
 
     /// Returns whether this sample is currently muted.
@@ -339,6 +334,15 @@ impl SampleWrapper {
         self.adsr.is_idling() || self.is_muted() || self.buffer.is_none()
     }
 
+    #[inline]
+    pub fn get_buffer_if_not_silent(&self) -> Option<&Vec<f32>> {
+        if self.is_silent() {
+            None
+        } else {
+            self.buffer.as_ref()
+        }
+    }
+
     /// Generates the next audio sample for the specified channel.
     ///
     /// This is the main audio processing method that should be called once per channel
@@ -347,6 +351,8 @@ impl SampleWrapper {
     ///
     /// # Arguments
     ///
+    /// * `process_count` - The number of frames processed by the plugin from the start of the note
+    /// This value must be corrected if sr of the sample != from the sample of the host.
     /// * `channel_index` - Which channel to generate (0 for left, 1 for right, etc.)
     ///
     /// # Returns
@@ -362,25 +368,25 @@ impl SampleWrapper {
     /// - Parameter loading and playback position updates only occur on channel 0
     /// - This prevents parameter drift and maintains channel synchronization
     /// - Uses linear interpolation for smooth playback at non-integer positions
-    pub fn next(&mut self, channel_index: usize) -> f32 {
+    pub fn next(&mut self, process_count: f32, channel_index: usize) -> f32 {
         // Check if we should play first
-        if self.is_silent() {
-            return 0.0;
-        }
+        let buffer = match self.get_buffer_if_not_silent() {
+            Some(buffer) => buffer,
+            None => return 0.0,
+        };
 
         // check if it's the first channel of the frame
         // to be processed
         let is_first_channel = channel_index == 0;
 
+        // Cache the params
+        let params = self.get_params();
+
         // Get the sample_index
-        let num_frames_delay = self.get_params().delay_start.value() * self.sample_rate;
-        let sample_index = self.get_playback_position(channel_index);
+        let num_frames_delay = params.delay_start.value() * self.sample_rate;
+        let (sample_index, fraction) = self.get_playback_position(process_count, channel_index);
 
-        // Update playback position only on the first channel of the frame
-        if is_first_channel {
-            self.increment_playback_position();
-        }
-
+        // Might have early return if current value is < 0
         let final_sample_index = match utils::clipping_sub(
             sample_index,
             (num_frames_delay * self.num_channel as f32) as usize,
@@ -389,51 +395,50 @@ impl SampleWrapper {
             None => return 0.,
         };
 
-        if let Some(buffer) = self.buffer.as_ref() {
-            // depending on if it'the value is Some or None
-            let sample_value = match (
-                buffer.get(final_sample_index),
-                buffer.get(final_sample_index + self.num_channel),
-            ) {
-                // Case were current value and next value are both defined
-                // We can interpolate
-                (Some(value), Some(value_next)) => {
-                    let fraction = self.raw_playback_position.fract();
-                    utils::interpolate(*value, *value_next, fraction)
-                }
+        // Get current and next frame
+        let current_frame = buffer.get(final_sample_index);
+        let next_frame = buffer.get(final_sample_index + self.num_channel);
 
-                // Current value is define but next is out of range
-                (Some(value), None) => *value,
+        // depending on the availability of current and next frame, we apply different processing
+        let sample_value = match (current_frame, next_frame) {
+            // Case were current value and next value are both defined
+            // We can interpolate
+            (Some(value), Some(value_next)) => utils::interpolate(*value, *value_next, fraction),
 
-                // Nothing defined, we reset note + adsr
-                _ => {
-                    // Case we are out of bounds
-                    self.midi_note = None;
-                    self.adsr.reset();
-                    return 0.0;
-                }
-            };
+            // Current value is define but next is out of range
+            (Some(value), None) => *value,
 
-            // Load parameter
-            let gain = utils::load_smooth_param(&self.get_params().gain.smoothed, is_first_channel);
+            // Nothing defined, we reset note + adsr
+            _ => {
+                // Case we are out of bounds
+                self.midi_note = None;
+                self.adsr.reset();
+                return 0.0;
+            }
+        };
 
-            // We don't want those param to be any smoothed!
-            let attack = self.get_params().attack.value();
-            let decay = self.get_params().decay.value();
-            let sustain = self.get_params().sustain.value();
-            let release = self.get_params().release.value();
+        // Load parameter
+        let gain = utils::load_smooth_param(&params.gain.smoothed, is_first_channel);
 
-            // Get the adrs value
-            let adrs_enveloppe =
-                self.adsr
-                    .next_value(attack, decay, sustain, release, is_first_channel);
+        // We don't want those param to be any smoothed!
+        let attack = params.attack.value();
+        let decay = params.decay.value();
+        let sustain = params.sustain.value();
+        let release = params.release.value();
 
-            sample_value * gain * adrs_enveloppe
-        } else {
-            0.0
-        }
+        // Get the adrs value
+        let adrs_envelope = self
+            .adsr
+            .next_value(attack, decay, sustain, release, is_first_channel);
+
+        sample_value * gain * adrs_envelope
     }
 
+    /// Writes audio data to both internal and shared buffers.
+    ///
+    /// The internal buffer write always succeeds and is critical for audio processing.
+    /// If the shared buffer write fails (GUI-related), audio processing continues
+    /// uninterrupted while the GUI may show stale waveform data.
     #[inline]
     fn write_two_buffers(&mut self, data: Option<Vec<f32>>) {
         self.buffer = data.clone();
@@ -451,10 +456,10 @@ impl SampleWrapper {
         self.shared_playback_position.clone()
     }
 
-    pub fn update_shared_position(&mut self) {
-        let current_position = self.get_playback_position(0);
-        let _ = self
-            .shared_playback_position
+    #[inline]
+    pub fn update_shared_position(&mut self, process_count: f32) {
+        let (current_position, _) = self.get_playback_position(process_count, 0);
+        self.shared_playback_position
             .store(current_position as u64, Ordering::Relaxed);
     }
 }
