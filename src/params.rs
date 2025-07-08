@@ -50,6 +50,9 @@ pub struct SamplePlayerParams {
     #[id = "delay_start"]
     pub delay_start: FloatParam,
 
+    #[id = "blend_group"]
+    pub blend_group: EnumParam<BlendGroup>,
+
     #[id = "pitch_shift_kind"]
     pub pitch_shift_kind: EnumParam<PitchShiftKind>,
 }
@@ -169,6 +172,8 @@ impl Default for SamplePlayerParams {
                 "Pitch Shift Kind",
                 PitchShiftKind::Classic,
             ),
+
+            blend_group: EnumParam::<BlendGroup>::new("Blend Group", BlendGroup::None),
         }
     }
 }
@@ -194,9 +199,6 @@ pub struct HardKickSamplerParams {
 
     #[id = "blend_transition"]
     pub blend_transition: FloatParam,
-
-    #[id = "blend_group"]
-    pub blend_group: EnumParam<BlendGroup>,
 
     #[nested(array, group = "Samples")]
     pub samples: [SamplePlayerParams; MAX_SAMPLES],
@@ -234,8 +236,6 @@ impl Default for HardKickSamplerParams {
             )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),
-
-            blend_group: EnumParam::<BlendGroup>::new("Blend Group", BlendGroup::None),
 
             samples: [(); MAX_SAMPLES].map(|_| SamplePlayerParams::default()),
         }

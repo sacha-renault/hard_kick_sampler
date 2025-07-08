@@ -318,21 +318,21 @@ fn render_control_tonal_blend(
             width * sample_width,
             PANEL_HEIGHT,
             |ui| {
-                let current_group = global_params.blend_group.value();
+                let current_group = sample_params.blend_group.value();
                 if ui
                     .radio(current_group == BlendGroup::None, "None")
                     .clicked()
                 {
-                    setter.set_parameter(&global_params.blend_group, BlendGroup::None);
+                    setter.set_parameter(&sample_params.blend_group, BlendGroup::None);
                 }
                 if ui
                     .radio(current_group == BlendGroup::Start, "Start")
                     .clicked()
                 {
-                    setter.set_parameter(&global_params.blend_group, BlendGroup::Start);
+                    setter.set_parameter(&sample_params.blend_group, BlendGroup::Start);
                 }
                 if ui.radio(current_group == BlendGroup::End, "End").clicked() {
-                    setter.set_parameter(&global_params.blend_group, BlendGroup::End);
+                    setter.set_parameter(&sample_params.blend_group, BlendGroup::End);
                 }
             },
         );
