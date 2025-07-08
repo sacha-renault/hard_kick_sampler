@@ -189,17 +189,14 @@ impl Plugin for HardKickSampler {
         // Handle the context
         self.handle_context(context);
 
-        // Update the position once per processed block
-        // Allowing for the GUI to `see` where the buffer is at
-        // In the lecture of the buffer
         // It also checks is all samples finished to play
-        let mut all_silent = true;
-        for sample_wrapper in self.sample_players.iter_mut() {
-            sample_wrapper.update_shared_position(self.process_count);
-            all_silent &= sample_wrapper.is_silent();
-        }
+        let mut active_players: Vec<_> = self
+            .sample_players
+            .iter_mut()
+            .filter(|sp| !sp.is_silent())
+            .collect();
 
-        if all_silent {
+        if active_players.is_empty() {
             // If all samples are silent, we can just return as it is
             return ProcessStatus::Normal;
         }
@@ -215,7 +212,7 @@ impl Plugin for HardKickSampler {
 
                 // each sample provide its next value
                 // Sum all playing samples
-                for sample_wrapper in self.sample_players.iter_mut() {
+                for sample_wrapper in active_players.iter_mut() {
                     *sample += sample_wrapper.next(self.process_count, channel_index);
                 }
 
@@ -223,6 +220,12 @@ impl Plugin for HardKickSampler {
                 *sample *= gain;
             }
         }
+
+        // Update the position once per processed block
+        // Allowing the GUI to see where we are in the buffer playback
+        self.sample_players
+            .iter_mut()
+            .for_each(|sp| sp.update_shared_position(self.process_count));
 
         ProcessStatus::Normal
     }
