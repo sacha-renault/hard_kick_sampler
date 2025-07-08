@@ -15,6 +15,7 @@ use crate::params::{BlendGroup, HardKickSamplerParams, SampleWrapperParams, MAX_
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
+use crate::utils;
 
 const PANEL_HEIGHT: f32 = 135.;
 
@@ -156,26 +157,33 @@ fn render_sample_info_strip(
                                 ));
                             }
 
+                            let next_file = current_file_path
+                                .clone()
+                                .and_then(|file| utils::get_next_file_in_directory_wrap(&file));
                             if ui
-                                .add_enabled(current_file_path.is_some(), Button::new(">"))
+                                .add_enabled(next_file.is_some(), Button::new(">"))
                                 .clicked()
                             {
-                                if let Some(file) = current_file_path.clone() {
-                                    async_executor.execute_background(TaskRequests::LoadNextFile(
+                                if let Some(file) = next_file {
+                                    async_executor.execute_background(TaskRequests::LoadFile(
                                         current_tab,
-                                        file.clone(),
+                                        file,
                                     ));
                                 }
                             }
 
+                            let previous_file = current_file_path
+                                .clone()
+                                .and_then(|file| utils::get_previous_file_in_directory_wrap(&file));
                             if ui
-                                .add_enabled(current_file_path.is_some(), Button::new("<"))
+                                .add_enabled(previous_file.is_some(), Button::new("<"))
                                 .clicked()
                             {
-                                if let Some(file) = current_file_path {
-                                    async_executor.execute_background(
-                                        TaskRequests::LoadPreviousFile(current_tab, file.clone()),
-                                    );
+                                if let Some(file) = previous_file {
+                                    async_executor.execute_background(TaskRequests::LoadFile(
+                                        current_tab,
+                                        file,
+                                    ));
                                 }
                             }
 

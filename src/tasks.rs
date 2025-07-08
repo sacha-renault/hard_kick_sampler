@@ -20,6 +20,4 @@ pub enum TaskRequests {
     TransfertTask(TaskResults),
     LoadFile(usize, PathBuf),
     OpenFilePicker(usize),
-    LoadNextFile(usize, String),
-    LoadPreviousFile(usize, String),
 }

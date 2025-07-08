@@ -255,20 +255,6 @@ impl Plugin for HardKickSampler {
                     }
                 }
             }
-            TaskRequests::LoadNextFile(index, current_path) => {
-                if let Some(file) = utils::get_next_file_in_directory_wrap(&current_path) {
-                    if let Ok(audio_data) = utils::load_audio_file(&file) {
-                        let _ = sender.send(TaskResults::LoadedFile(index, file, audio_data));
-                    }
-                }
-            }
-            TaskRequests::LoadPreviousFile(index, current_path) => {
-                if let Some(file) = utils::get_previous_file_in_directory_wrap(&current_path) {
-                    if let Ok(audio_data) = utils::load_audio_file(&file) {
-                        let _ = sender.send(TaskResults::LoadedFile(index, file, audio_data));
-                    }
-                }
-            }
         })
     }
 }

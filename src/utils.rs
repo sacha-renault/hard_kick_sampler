@@ -146,3 +146,25 @@ pub fn clipping_sub(lhs: usize, rhs: usize) -> Option<usize> {
         None
     }
 }
+
+pub fn get_root_note_from_filename(file_name: String) -> Option<i32> {
+    // chunk with some common separator
+    for chunk in file_name.split(['_', ' ', '-']).rev() {
+        match chunk.to_uppercase().as_str() {
+            "C" => return Some(0),
+            "C#" | "CS" | "DB" => return Some(1),
+            "D" => return Some(2),
+            "D#" | "DS" | "EB" => return Some(3),
+            "E" => return Some(4),
+            "F" => return Some(5),
+            "F#" | "FS" | "GB" => return Some(6),
+            "G" => return Some(7),
+            "G#" | "GS" | "AB" => return Some(8),
+            "A" => return Some(9),
+            "A#" | "AS" | "BB" => return Some(10),
+            "B" => return Some(11),
+            _ => {}
+        };
+    }
+    None
+}
