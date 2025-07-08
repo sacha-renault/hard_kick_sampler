@@ -241,13 +241,16 @@ impl SamplePlayer {
     /// 0.5 = half speed (octave down).
     #[inline]
     pub fn get_playback_rate(&self) -> f32 {
+        // Cache params
+        let params = self.get_params();
+
         // Parameter offset (user tuning adjustment)
-        let param_note_offset = self.get_params().semitone_offset.value() as f32;
+        let param_note_offset = params.semitone_offset.value() as f32;
 
         // MIDI note offset from root note
-        let midi_note_offset = if self.get_params().is_tonal.value() {
+        let midi_note_offset = if params.is_tonal.value() {
             let midi_offset = self.midi_note.unwrap_or(0) as f32;
-            let root_note = self.get_params().root_note.value() as f32;
+            let root_note = params.root_note.value() as f32;
             midi_offset - root_note
         } else {
             0.
