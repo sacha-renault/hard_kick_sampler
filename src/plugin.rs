@@ -20,6 +20,9 @@ pub struct HardKickSampler {
     receiver: Option<std::sync::mpsc::Receiver<TaskResults>>,
 
     // the number of blocks processed since note started
+    // This technically could be problematic to have f32
+    // If samples last more than 5 minutes but since
+    // It's mean to get kick parts, it should be okay
     process_count: f32,
 }
 
