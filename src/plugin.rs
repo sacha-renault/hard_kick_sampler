@@ -192,8 +192,15 @@ impl Plugin for HardKickSampler {
         // Handle the context
         self.handle_context(context);
 
+        // Clear the buffer
+        for channel_samples in buffer.iter_samples() {
+            for sample in channel_samples.into_iter() {
+                *sample = 0.;
+            }
+        }
+
         // It also checks is all samples finished to play
-        let mut active_players: Vec<_> = self
+        let active_players: Vec<_> = self
             .sample_players
             .iter_mut()
             .filter(|sp| !sp.is_silent())
@@ -204,22 +211,17 @@ impl Plugin for HardKickSampler {
             return ProcessStatus::Normal;
         }
 
-        // Audio processing
+        // every active player fill the buffe one by one
+        for sample_player in active_players {
+            sample_player.process(buffer, self.process_count);
+        }
+
+        self.process_count += buffer.samples() as f32;
+
+        // Apply gain
         for channel_samples in buffer.iter_samples() {
-            // Smoothing is optionally built into the parameters themselves
             let gain = self.params.gain.smoothed.next();
-            self.process_count += 1.;
-
-            for (channel_index, sample) in channel_samples.into_iter().enumerate() {
-                *sample = 0.;
-
-                // each sample provide its next value
-                // Sum all playing samples
-                for sample_wrapper in active_players.iter_mut() {
-                    *sample += sample_wrapper.next(self.process_count, channel_index);
-                }
-
-                // apply gain
+            for sample in channel_samples.into_iter() {
                 *sample *= gain;
             }
         }

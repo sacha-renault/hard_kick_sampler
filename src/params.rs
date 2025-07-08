@@ -5,7 +5,7 @@ use std::{
 
 use nih_plug::prelude::*;
 
-use crate::utils;
+use crate::{pitch_shift::PitchShiftKind, utils};
 
 pub const MAX_SAMPLES: usize = 8;
 
@@ -49,6 +49,9 @@ pub struct SamplePlayerParams {
     // Delay start (in s)
     #[id = "delay_start"]
     pub delay_start: FloatParam,
+
+    #[id = "pitch_shift_kind"]
+    pub pitch_shift_kind: EnumParam<PitchShiftKind>,
 }
 
 impl Default for SamplePlayerParams {
@@ -161,6 +164,11 @@ impl Default for SamplePlayerParams {
             )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),
+
+            pitch_shift_kind: EnumParam::<PitchShiftKind>::new(
+                "Pitch Shift Kind",
+                PitchShiftKind::Classic,
+            ),
         }
     }
 }

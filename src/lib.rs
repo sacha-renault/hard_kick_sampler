@@ -1,6 +1,7 @@
 mod adsr;
 mod editor;
 mod params;
+mod pitch_shift;
 mod plugin;
 mod sample_wrapper;
 mod shared_states;

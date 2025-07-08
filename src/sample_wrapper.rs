@@ -2,10 +2,12 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
+use nih_plug::buffer::Buffer;
 use nih_plug::nih_error;
 
 use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
+use crate::pitch_shift::PitchShiftKind;
 use crate::tasks::AudioData;
 use crate::utils;
 
@@ -371,6 +373,7 @@ impl SamplePlayer {
     /// - Parameter loading and playback position updates only occur on channel 0
     /// - This prevents parameter drift and maintains channel synchronization
     /// - Uses linear interpolation for smooth playback at non-integer positions
+    #[inline]
     pub fn next(&mut self, process_count: f32, channel_index: usize) -> f32 {
         // Check if we should play first
         let buffer = match self.get_buffer_if_not_silent() {
@@ -435,6 +438,24 @@ impl SamplePlayer {
             .next_value(attack, decay, sustain, release, is_first_channel);
 
         sample_value * gain * adrs_envelope
+    }
+
+    pub fn process(&mut self, buffer: &mut Buffer, process_count: f32) {
+        match self.get_params().pitch_shift_kind.value() {
+            PitchShiftKind::Classic => self.process_classic(buffer, process_count),
+        }
+    }
+
+    fn process_classic(&mut self, buffer: &mut Buffer, process_count: f32) {
+        for (count, frame) in buffer
+            .iter_samples()
+            .enumerate()
+            .map(|(i, sample)| (i as f32 + process_count, sample))
+        {
+            for (channel_index, sample) in frame.into_iter().enumerate() {
+                *sample += self.next(count, channel_index);
+            }
+        }
     }
 
     /// Writes audio data to both internal and shared buffers.
