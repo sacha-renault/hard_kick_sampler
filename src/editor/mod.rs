@@ -1,4 +1,3 @@
-mod knob;
 #[allow(dead_code)]
 mod theme;
 mod waveform;

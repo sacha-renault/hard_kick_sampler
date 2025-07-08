@@ -1,11 +1,12 @@
 use egui::*;
+use egui_knob;
 use nih_plug::{
     params::{BoolParam, FloatParam, IntParam, Param},
     prelude::ParamSetter,
 };
 
 use super::theme::*;
-use crate::{editor::knob, utils};
+use crate::utils;
 
 pub fn create_toggle_button(ui: &mut Ui, param: &BoolParam, setter: &ParamSetter) -> Response {
     let mut value = param.value();
@@ -198,11 +199,12 @@ pub fn create_knob(
 
             let mut value = param.modulated_normalized_value();
 
-            let knob = knob::Knob::new(&mut value, 0.0, 1.0, knob::KnobStyle::Wiper)
+            let knob = egui_knob::Knob::new(&mut value, 0.0, 1.0, egui_knob::KnobStyle::Wiper)
                 .with_size(30.0)
                 .with_font_size(14.0)
                 .with_stroke_width(2.0)
-                .with_colors(Color32::GRAY, Color32::WHITE, Color32::WHITE);
+                .with_colors(Color32::GRAY, Color32::WHITE, Color32::WHITE)
+                .with_sweep_range(1. / 8., 0.75);
 
             let response = ui.add(knob);
 
