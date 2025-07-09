@@ -1,7 +1,7 @@
 use nih_plug::prelude::*;
 use std::sync::{atomic::AtomicU64, Arc, RwLock};
 
-use crate::{params::HardKickSamplerParams, tasks::AudioData, utils::SharedAudioData};
+use crate::{params::HardKickSamplerParams, tasks::AudioData};
 
 #[derive(Debug)]
 pub struct SharedStates {

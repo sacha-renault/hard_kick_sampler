@@ -9,7 +9,7 @@ use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
 use crate::pitch_shift::PitchShiftKind;
 use crate::tasks::AudioData;
-use crate::utils::{self, SharedAudioData};
+use crate::utils;
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
 const BASE_NOTE: u8 = 60;
@@ -361,7 +361,7 @@ impl SamplePlayer {
     /// # Arguments
     ///
     /// * `process_count` - The number of frames processed by the plugin from the start of the note
-    ///     this value must be corrected if sr of the sample != from the sample of the host.
+    ///    this value must be corrected if sr of the sample != from the sample of the host.
     /// * `channel_index` - Which channel to generate (0 for left, 1 for right, etc.)
     ///
     /// # Returns
@@ -469,12 +469,10 @@ impl SamplePlayer {
     /// uninterrupted while the GUI may show stale waveform data.
     #[inline]
     fn write_two_buffers(&mut self, audio_data: Option<AudioData>) {
-        self.buffer = audio_data
-            .as_ref()
-            .and_then(|audio| Some(audio.data.clone()));
+        self.buffer = audio_data.as_ref().map(|audio| audio.data.clone());
         self.sample_channels = audio_data
             .as_ref()
-            .and_then(|audio| Some(audio.spec.channels))
+            .map(|audio| audio.spec.channels)
             .unwrap_or(0) as usize;
         match self.shared_buffer.write() {
             Ok(mut buff) => *buff = audio_data,
