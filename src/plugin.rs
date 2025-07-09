@@ -1,5 +1,6 @@
 use nih_plug::prelude::*;
 use std::num::NonZero;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::editor::create_editor;
@@ -8,6 +9,8 @@ use crate::sample_wrapper::SamplePlayer;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
+
+const DEFAULT_TEMPO: f64 = 150.;
 
 pub struct HardKickSampler {
     // Params of the plugin
@@ -24,6 +27,9 @@ pub struct HardKickSampler {
     // If samples last more than 5 minutes but since
     // It's mean to get kick parts, it should be okay
     process_count: f32,
+
+    // The BPM given by the host
+    host_bpm: Arc<AtomicF32>,
 }
 
 impl Default for HardKickSampler {
@@ -37,6 +43,7 @@ impl Default for HardKickSampler {
             sample_players: sample_wrappers,
             receiver: None,
             process_count: 0.,
+            host_bpm: Arc::new(AtomicF32::default()),
         }
     }
 }
@@ -232,6 +239,10 @@ impl Plugin for HardKickSampler {
             .iter_mut()
             .for_each(|sp| sp.update_shared_position(self.process_count));
 
+        // Set host bpm
+        let tempo = context.transport().tempo.unwrap_or(DEFAULT_TEMPO) as f32;
+        self.host_bpm.store(tempo, Ordering::Relaxed);
+
         ProcessStatus::Normal
     }
 
@@ -248,6 +259,7 @@ impl Plugin for HardKickSampler {
                 .iter()
                 .map(|s| s.get_shared_position())
                 .collect(),
+            host_bpm: self.host_bpm.clone(),
         };
         create_editor(state, async_executor)
     }

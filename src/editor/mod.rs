@@ -16,8 +16,8 @@ use crate::editor::waveform::{render_waveform_stereo, PlotData};
 use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
-use crate::tasks::{TaskRequests, TaskResults};
-use crate::utils::{self, SharedAudioData};
+use crate::tasks::{AudioData, TaskRequests, TaskResults};
+use crate::utils;
 
 const PANEL_HEIGHT: f32 = 135.;
 
@@ -200,14 +200,14 @@ fn render_sample_info_strip(
 
 fn render_waveform_display(
     ui: &mut Ui,
-    shared_data: Option<&SharedAudioData>,
+    shared_data: Option<&AudioData>,
     num_channels: usize,
     params: &SamplePlayerParams,
     current_position: Arc<AtomicU64>,
 ) {
     // Render image if needed
     match shared_data {
-        Some(shared_data) if !shared_data.buffer.is_empty() => {
+        Some(shared_data) if !shared_data.data.is_empty() => {
             // Get ui size available
             let height_per_channel =
                 (ui.available_height() - theme::SPACE_AMOUNT) / num_channels as f32;
@@ -219,11 +219,11 @@ fn render_waveform_display(
 
             // Data to be displayed
             let line_data = PlotData::new(
-                &shared_data.buffer,
+                &shared_data.data,
                 trim_start,
                 delay_start,
-                shared_data.sample_rate,
-                num_channels,
+                shared_data.spec.sample_rate as f32,
+                shared_data.spec.channels as usize,
                 position,
             );
 
@@ -438,7 +438,10 @@ pub fn create_editor(
 
             let current_sample_params = &params.samples[current_tab];
             let current_position = states.positions[current_tab].clone();
-            let waveform_data = states.shared_buffer[current_tab].read().ok();
+            let guard_option = states.shared_buffer[current_tab].read().ok();
+            let audio_data: Option<&AudioData> = guard_option
+                .as_ref() // Option<&RwLockReadGuard<Option<AudioData>>>
+                .and_then(|guard| guard.as_ref());
 
             CentralPanel::default().show(ctx, |ui| {
                 show_with_margin(ui, (theme::PANEL_PADDING, theme::PANEL_PADDING), |ui| {
@@ -466,7 +469,7 @@ pub fn create_editor(
                     // Waveform display takes remaining space
                     render_waveform_display(
                         ui,
-                        waveform_data.as_deref(),
+                        audio_data,
                         2,
                         current_sample_params,
                         current_position,

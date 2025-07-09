@@ -21,21 +21,22 @@ pub fn render_waveform_stereo(ui: &mut egui::Ui, channel_index: usize, line_data
                     channel_index.to_string(),
                     PlotPoints::from_iter(line_data.silent()),
                 )
-                .color(Color32::PURPLE),
+                .color(Color32::LIGHT_RED),
             );
             ui.line(
                 Line::new(
                     channel_index.to_string(),
                     PlotPoints::from_iter(line_data.data(width, channel_index)),
                 )
-                .color(Color32::PURPLE),
+                .color(Color32::LIGHT_RED),
             );
             ui.line(
                 Line::new(
                     channel_index.to_string(),
                     PlotPoints::from_iter(line_data.position(width)),
                 )
-                .color(Color32::BLUE),
+                .color(Color32::LIGHT_BLUE)
+                .width(4.),
             );
         });
 }

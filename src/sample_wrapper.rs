@@ -48,14 +48,17 @@ pub struct SamplePlayer {
     midi_note: Option<i8>,
 
     /// Number of output channels
-    num_channel: usize,
+    host_channels: usize,
+
+    /// Number of channel of the sample
+    sample_channels: usize,
 
     /// The adsr envelope
     adsr: MultiChannelAdsr,
 
     // HERE ARE THE DATA THAT ARE SHARED WITH THE GUI
     /// A copy of the buffer that the GUI can access for display
-    shared_buffer: Arc<RwLock<SharedAudioData>>,
+    shared_buffer: Arc<RwLock<Option<AudioData>>>,
 
     /// A copy of the current position in the sample
     shared_playback_position: Arc<AtomicU64>,
@@ -96,11 +99,12 @@ impl SamplePlayer {
             sample_rate: 0.,
             host_sample_rate: DEFAULT_SAMPLE_RATE,
             midi_note: None,
-            num_channel: 0,
+            host_channels: 0,
+            sample_channels: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
 
             // THINGS FOR GUI
-            shared_buffer: Arc::new(RwLock::new(SharedAudioData::default())),
+            shared_buffer: Arc::new(RwLock::new(None)),
             shared_playback_position: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -154,7 +158,7 @@ impl SamplePlayer {
     ///
     /// * `num_channel` - Number of output channels (1=mono, 2=stereo, etc.)
     pub fn change_channel_number(&mut self, num_channel: usize) {
-        self.num_channel = num_channel;
+        self.host_channels = num_channel;
     }
 
     /// Loads an audio file and sets it as the current sample.
@@ -177,7 +181,7 @@ impl SamplePlayer {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Set the buffer and sample rate
         self.sample_rate = audio_data.spec.sample_rate as f32;
-        self.write_two_buffers(Some(audio_data.data));
+        self.write_two_buffers(Some(audio_data));
 
         // If buffer is loaded, we set the sample path
         match self.get_params().sample_path.write() {
@@ -222,11 +226,11 @@ impl SamplePlayer {
         };
 
         // load audio
-        let audio = utils::load_audio_file(&file_path)?;
+        let audio_data = utils::load_audio_file(&file_path)?;
 
         // Set the buffer and sample rate
-        self.sample_rate = audio.spec.sample_rate as f32;
-        self.write_two_buffers(Some(audio.data));
+        self.sample_rate = audio_data.spec.sample_rate as f32;
+        self.write_two_buffers(Some(audio_data));
         Ok(())
     }
 
@@ -279,7 +283,7 @@ impl SamplePlayer {
 
         let frame_index = pitched_position as usize;
         let fraction = pitched_position.fract();
-        let sample_index = frame_index * self.num_channel + channel_index;
+        let sample_index = frame_index * self.host_channels + channel_index;
 
         (sample_index, fraction)
     }
@@ -395,7 +399,7 @@ impl SamplePlayer {
         // Might have early return if current value is < 0
         let final_sample_index = match utils::clipping_sub(
             sample_index,
-            (num_frames_delay * self.num_channel as f32) as usize,
+            (num_frames_delay * self.host_channels as f32) as usize,
         ) {
             Some(v) => v,
             None => return 0.,
@@ -403,7 +407,7 @@ impl SamplePlayer {
 
         // Get current and next frame
         let current_frame = buffer.get(final_sample_index);
-        let next_frame = buffer.get(final_sample_index + self.num_channel);
+        let next_frame = buffer.get(final_sample_index + self.host_channels);
 
         // depending on the availability of current and next frame, we apply different processing
         let sample_value = match (current_frame, next_frame) {
@@ -464,17 +468,21 @@ impl SamplePlayer {
     /// If the shared buffer write fails (GUI-related), audio processing continues
     /// uninterrupted while the GUI may show stale waveform data.
     #[inline]
-    fn write_two_buffers(&mut self, data: Option<Vec<f32>>) {
-        self.buffer = data.clone();
+    fn write_two_buffers(&mut self, audio_data: Option<AudioData>) {
+        self.buffer = audio_data
+            .as_ref()
+            .and_then(|audio| Some(audio.data.clone()));
+        self.sample_channels = audio_data
+            .as_ref()
+            .and_then(|audio| Some(audio.spec.channels))
+            .unwrap_or(0) as usize;
         match self.shared_buffer.write() {
-            Ok(mut buff) => {
-                *buff = SharedAudioData::new(data.unwrap_or_default(), self.sample_rate)
-            }
+            Ok(mut buff) => *buff = audio_data,
             Err(_) => nih_error!("Couldn't write ..."),
         }
     }
 
-    pub fn get_shared_audio_data(&self) -> Arc<RwLock<SharedAudioData>> {
+    pub fn get_shared_audio_data(&self) -> Arc<RwLock<Option<AudioData>>> {
         self.shared_buffer.clone()
     }
 
