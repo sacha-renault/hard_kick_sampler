@@ -9,7 +9,7 @@ use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
 use crate::pitch_shift::PitchShiftKind;
 use crate::tasks::AudioData;
-use crate::utils;
+use crate::utils::{self, SharedAudioData};
 
 /// MIDI note number for middle C (C3), used as the base note for pitch calculations
 const BASE_NOTE: u8 = 60;
@@ -55,7 +55,7 @@ pub struct SamplePlayer {
 
     // HERE ARE THE DATA THAT ARE SHARED WITH THE GUI
     /// A copy of the buffer that the GUI can access for display
-    shared_buffer: Arc<RwLock<Vec<f32>>>,
+    shared_buffer: Arc<RwLock<SharedAudioData>>,
 
     /// A copy of the current position in the sample
     shared_playback_position: Arc<AtomicU64>,
@@ -100,7 +100,7 @@ impl SamplePlayer {
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
 
             // THINGS FOR GUI
-            shared_buffer: Arc::new(RwLock::new(Vec::new())),
+            shared_buffer: Arc::new(RwLock::new(SharedAudioData::default())),
             shared_playback_position: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -467,12 +467,14 @@ impl SamplePlayer {
     fn write_two_buffers(&mut self, data: Option<Vec<f32>>) {
         self.buffer = data.clone();
         match self.shared_buffer.write() {
-            Ok(mut buff) => *buff = data.unwrap_or_default(),
+            Ok(mut buff) => {
+                *buff = SharedAudioData::new(data.unwrap_or_default(), self.sample_rate)
+            }
             Err(_) => nih_error!("Couldn't write ..."),
         }
     }
 
-    pub fn get_shared_buffer(&self) -> Arc<RwLock<Vec<f32>>> {
+    pub fn get_shared_audio_data(&self) -> Arc<RwLock<SharedAudioData>> {
         self.shared_buffer.clone()
     }
 
@@ -482,8 +484,13 @@ impl SamplePlayer {
 
     #[inline]
     pub fn update_shared_position(&mut self, process_count: f32) {
-        let (current_position, _) = self.get_playback_position(process_count, 0);
-        self.shared_playback_position
-            .store(current_position as u64, Ordering::Relaxed);
+        if !self.is_silent() {
+            let raw_playback_position = process_count * self.get_sr_correction();
+            let pitched_position = self.get_playback_rate() * raw_playback_position;
+            self.shared_playback_position
+                .store(pitched_position as u64, Ordering::Relaxed);
+        } else {
+            self.shared_playback_position.store(0, Ordering::Relaxed);
+        }
     }
 }

@@ -241,7 +241,7 @@ impl Plugin for HardKickSampler {
             shared_buffer: self
                 .sample_players
                 .iter()
-                .map(|s| s.get_shared_buffer())
+                .map(|s| s.get_shared_audio_data())
                 .collect(),
             positions: self
                 .sample_players

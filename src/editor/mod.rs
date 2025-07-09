@@ -4,17 +4,20 @@ mod waveform;
 #[allow(dead_code)]
 mod widgets;
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
 use egui::*;
 use nih_plug::prelude::ParamSetter;
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
-use crate::editor::waveform::render_waveform_stereo;
+use crate::editor::waveform::{render_waveform_stereo, PlotData};
 use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
-use crate::utils;
+use crate::utils::{self, SharedAudioData};
 
 const PANEL_HEIGHT: f32 = 135.;
 
@@ -199,29 +202,40 @@ fn render_sample_info_strip(
 
 fn render_waveform_display(
     ui: &mut Ui,
-    waveform_data: Option<&Vec<f32>>,
+    shared_data: Option<&SharedAudioData>,
     num_channels: usize,
     params: &SamplePlayerParams,
+    current_position: Arc<AtomicU64>,
 ) {
     // Render image if needed
-    match waveform_data {
-        Some(data) if !data.is_empty() => {
+    match shared_data {
+        Some(shared_data) if !shared_data.buffer.is_empty() => {
+            // Get ui size available
             let height_per_channel =
                 (ui.available_height() - theme::SPACE_AMOUNT) / num_channels as f32;
+
+            // sample specific stuff
             let trim_start = params.trim_start.value();
             let delay_start = params.delay_start.value();
+            let position = current_position.load(Ordering::Relaxed);
+
+            // Data to be displayed
+            let line_data = PlotData::new(
+                &shared_data.buffer,
+                trim_start,
+                delay_start,
+                shared_data.sample_rate,
+                num_channels,
+                position,
+            );
+
+            // iterate for all the channels available
             for channel_index in 0..num_channels {
+                // Paint rect
                 let rect = paint_rect(ui, height_per_channel, ui.available_width());
+
                 ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
-                    render_waveform_stereo(
-                        ui,
-                        data,
-                        channel_index,
-                        num_channels,
-                        trim_start,
-                        delay_start,
-                        44100., // TODO get the real sample rate!
-                    )
+                    render_waveform_stereo(ui, channel_index, &line_data);
                 });
             }
         }
@@ -425,6 +439,8 @@ pub fn create_editor(
             theme::apply_theme(ctx);
 
             let current_sample_params = &params.samples[current_tab];
+            let current_position = states.positions[current_tab].clone();
+            let waveform_data = states.shared_buffer[current_tab].read().ok();
 
             CentralPanel::default().show(ctx, |ui| {
                 show_with_margin(ui, (theme::PANEL_PADDING, theme::PANEL_PADDING), |ui| {
@@ -444,8 +460,13 @@ pub fn create_editor(
                     render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
 
                     // Waveform display takes remaining space
-                    let waveform_data = states.shared_buffer[current_tab].read().ok();
-                    render_waveform_display(ui, waveform_data.as_deref(), 2, current_sample_params);
+                    render_waveform_display(
+                        ui,
+                        waveform_data.as_deref(),
+                        2,
+                        current_sample_params,
+                        current_position,
+                    );
                 });
             });
 

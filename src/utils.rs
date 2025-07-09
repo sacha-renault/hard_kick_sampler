@@ -1,8 +1,15 @@
 use std::path::{Path, PathBuf};
 
+use derive_more::Constructor;
 use nih_plug::prelude::{Smoothable, Smoother};
 
 use crate::tasks::AudioData;
+
+#[derive(Debug, Default, Constructor)]
+pub struct SharedAudioData {
+    pub buffer: Vec<f32>,
+    pub sample_rate: f32,
+}
 
 #[inline]
 pub fn load_smooth_param<T: Smoothable>(smoother: &Smoother<T>, is_first_channel: bool) -> T {
