@@ -1,5 +1,4 @@
 use egui::*;
-use egui_knob;
 use nih_plug::{
     params::{BoolParam, FloatParam, IntParam, Param},
     prelude::ParamSetter,
@@ -194,7 +193,7 @@ pub fn create_knob(
         |ui| {
             // set name + value
             ui.centered_and_justified(|ui| {
-                ui.label(format!("{}", param.name()));
+                ui.label(param.name());
             });
 
             let mut value = param.modulated_normalized_value();
@@ -228,7 +227,7 @@ pub fn create_knob(
             }
 
             ui.centered_and_justified(|ui| {
-                ui.label(format!("{}", param.normalized_value_to_string(value, true)));
+                ui.label(param.normalized_value_to_string(value, true));
             });
             response
         },

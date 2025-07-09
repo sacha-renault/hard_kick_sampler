@@ -22,7 +22,7 @@ use crate::utils::{self, SharedAudioData};
 const PANEL_HEIGHT: f32 = 135.;
 
 fn get_current_tab(ctx: &Context) -> usize {
-    ctx.data(|data| data.get_temp::<usize>(Id::new("tab")).clone().unwrap_or(0))
+    ctx.data(|data| data.get_temp::<usize>(Id::new("tab")).unwrap_or(0))
 }
 
 fn set_current_tab(ctx: &Context, current_tab: usize) {
@@ -54,10 +54,8 @@ fn handle_file_drop(
     async_executor: &AsyncExecutor<HardKickSampler>,
     current_tab: usize,
 ) {
-    if let Some(file) = ctx.input(|i| i.raw.dropped_files.first().map(|f| f.path.clone())) {
-        if let Some(path) = file {
-            async_executor.execute_background(TaskRequests::LoadFile(current_tab, path));
-        }
+    if let Some(Some(path)) = ctx.input(|i| i.raw.dropped_files.first().map(|f| f.path.clone())) {
+        async_executor.execute_background(TaskRequests::LoadFile(current_tab, path));
     }
 }
 
@@ -115,7 +113,7 @@ fn render_panel<R>(
 fn render_sample_info_strip(
     ui: &mut Ui,
     async_executor: &AsyncExecutor<HardKickSampler>,
-    params: &HardKickSamplerParams,
+    params: Arc<HardKickSamplerParams>,
     current_tab: usize,
     setter: &ParamSetter,
 ) {
@@ -298,7 +296,7 @@ fn render_tabs(ui: &mut egui::Ui, current_tab: usize) -> usize {
 
 fn render_control_tonal_blend(
     ui: &mut Ui,
-    global_params: &HardKickSamplerParams,
+    global_params: Arc<HardKickSamplerParams>,
     sample_params: &SamplePlayerParams,
     setter: &ParamSetter,
 ) {
@@ -453,11 +451,17 @@ pub fn create_editor(
                     ui.separator();
 
                     // Render the first row of controls
-                    render_control_tonal_blend(ui, &params, &current_sample_params, setter);
-                    render_control_adsr_time_gain(ui, &current_sample_params, setter);
+                    render_control_tonal_blend(ui, params.clone(), current_sample_params, setter);
+                    render_control_adsr_time_gain(ui, current_sample_params, setter);
 
                     // Sample info strip above waveform
-                    render_sample_info_strip(ui, &async_executor, &params, current_tab, setter);
+                    render_sample_info_strip(
+                        ui,
+                        &async_executor,
+                        params.clone(),
+                        current_tab,
+                        setter,
+                    );
 
                     // Waveform display takes remaining space
                     render_waveform_display(

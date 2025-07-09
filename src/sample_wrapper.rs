@@ -357,7 +357,7 @@ impl SamplePlayer {
     /// # Arguments
     ///
     /// * `process_count` - The number of frames processed by the plugin from the start of the note
-    /// This value must be corrected if sr of the sample != from the sample of the host.
+    ///     this value must be corrected if sr of the sample != from the sample of the host.
     /// * `channel_index` - Which channel to generate (0 for left, 1 for right, etc.)
     ///
     /// # Returns

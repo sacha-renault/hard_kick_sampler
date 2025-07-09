@@ -73,7 +73,7 @@ pub struct PlotData<'a> {
     position: u64,
 }
 
-impl<'a> PlotData<'a> {
+impl PlotData<'_> {
     pub fn data(&self, width: f32, channel_index: usize) -> impl Iterator<Item = [f64; 2]> + '_ {
         let step_by = get_step_by_value(width, self.buffer.len() as f32, self.num_channels as f32);
         let num_skip = (self.trim_start * self.sample_rate) as usize * self.num_channels;
@@ -95,7 +95,7 @@ impl<'a> PlotData<'a> {
 }
 
 pub fn get_plot_line(
-    buffer: &Vec<f32>,
+    buffer: &[f32],
     num_silent: usize,
     num_skip: usize,
     step_by: usize,
