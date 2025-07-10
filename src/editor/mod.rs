@@ -12,7 +12,7 @@ use nih_plug::prelude::ParamSetter;
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
-use crate::editor::waveform::{render_waveform_stereo, PlotData};
+use crate::editor::waveform::WavePlot;
 use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -202,6 +202,7 @@ fn render_waveform_display(
     ui: &mut Ui,
     shared_data: Option<&AudioData>,
     params: &SamplePlayerParams,
+    global_params: Arc<HardKickSamplerParams>,
     current_position: Arc<AtomicU64>,
 ) {
     // Render image if needed
@@ -220,13 +221,16 @@ fn render_waveform_display(
             let position = current_position.load(Ordering::Relaxed);
 
             // Data to be displayed
-            let line_data = PlotData::new(
+            let wave_plot = WavePlot::new(
                 &shared_data.data,
                 trim_start,
                 delay_start,
                 shared_data.spec.sample_rate as f32,
                 shared_data.spec.channels as usize,
                 position,
+                params.blend_group.value(),
+                global_params.blend_time.value(),
+                global_params.blend_transition.value(),
             );
 
             // iterate for all the channels available
@@ -235,7 +239,7 @@ fn render_waveform_display(
                 let rect = paint_rect(ui, height_per_channel, ui.available_width());
 
                 ui.allocate_new_ui(UiBuilder::new().max_rect(rect), |ui| {
-                    render_waveform_stereo(ui, channel_index, &line_data);
+                    wave_plot.display(ui, channel_index);
                 });
             }
         }
@@ -312,11 +316,8 @@ fn render_control_tonal_blend(
                     widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
                 });
 
-                ui.add_space(8.0);
-
                 widgets::create_toggle_button(ui, &sample_params.is_tonal, setter);
 
-                ui.add_space(8.0);
                 widgets::create_combo_box(
                     ui,
                     &sample_params.root_note,
@@ -473,6 +474,7 @@ pub fn create_editor(
                         ui,
                         shared_data,
                         current_sample_params,
+                        params.clone(),
                         current_position,
                     );
                 });
