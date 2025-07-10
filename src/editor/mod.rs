@@ -201,13 +201,15 @@ fn render_sample_info_strip(
 fn render_waveform_display(
     ui: &mut Ui,
     shared_data: Option<&AudioData>,
-    num_channels: usize,
     params: &SamplePlayerParams,
     current_position: Arc<AtomicU64>,
 ) {
     // Render image if needed
     match shared_data {
         Some(shared_data) if !shared_data.data.is_empty() => {
+            // Get the number of channels
+            let num_channels = shared_data.spec.channels as usize;
+
             // Get ui size available
             let height_per_channel =
                 (ui.available_height() - theme::SPACE_AMOUNT) / num_channels as f32;
@@ -439,7 +441,7 @@ pub fn create_editor(
             let current_sample_params = &params.samples[current_tab];
             let current_position = states.positions[current_tab].clone();
             let guard_option = states.shared_buffer[current_tab].read().ok();
-            let audio_data: Option<&AudioData> = guard_option
+            let shared_data: Option<&AudioData> = guard_option
                 .as_ref() // Option<&RwLockReadGuard<Option<AudioData>>>
                 .and_then(|guard| guard.as_ref());
 
@@ -469,8 +471,7 @@ pub fn create_editor(
                     // Waveform display takes remaining space
                     render_waveform_display(
                         ui,
-                        audio_data,
-                        2,
+                        shared_data,
                         current_sample_params,
                         current_position,
                     );
