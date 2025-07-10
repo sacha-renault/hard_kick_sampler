@@ -161,47 +161,96 @@ impl SamplePlayer {
         self.host_channels = num_channel;
     }
 
-    /// Loads an audio file and sets it as the current sample.
+    /// Sets the sample file path in the parameters.
     ///
-    /// The file path is stored in the parameters for preset saving/loading.
+    /// # Arguments
+    ///
+    /// * `file_path` - Path to set, or None to clear
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if successful
+    /// * `Err(...)` if the parameter write lock couldn't be acquired
+    fn set_sample_path(&self, file_path: Option<&Path>) -> Result<(), Box<dyn std::error::Error>> {
+        let mut path_guard = self
+            .get_params()
+            .sample_path
+            .write()
+            .map_err(|_| "Failed to acquire write lock on sample path")?;
+
+        *path_guard = file_path.map(|p| p.to_path_buf());
+        Ok(())
+    }
+
+    /// Updates both internal and shared audio buffers with new data.
+    ///
+    /// This method handles updating the internal buffer for audio processing
+    /// and the shared buffer for GUI display. If updating the shared buffer fails,
+    /// audio processing continues uninterrupted.
+    ///
+    /// # Arguments
+    ///
+    /// * `audio_data` - New audio data to set, or None to clear buffers
+    fn update_buffers(&mut self, audio_data: Option<AudioData>) {
+        // Update internal buffer and metadata
+        self.buffer = audio_data.as_ref().map(|data| data.data.clone());
+        self.sample_channels = audio_data
+            .as_ref()
+            .map(|data| data.spec.channels as usize)
+            .unwrap_or(0);
+
+        // Update sample rate if we have audio data
+        if let Some(ref data) = audio_data {
+            self.sample_rate = data.spec.sample_rate as f32;
+        }
+
+        // Update shared buffer for GUI (non-critical operation)
+        if let Ok(mut shared_guard) = self.shared_buffer.write() {
+            *shared_guard = audio_data;
+        } else {
+            nih_error!("Failed to update shared buffer for GUI - audio processing continues");
+        }
+    }
+
+    /// Loads an audio file and sets it as the current sample.
     ///
     /// # Arguments
     ///
     /// * `file_path` - Path to the audio file to load
-    /// * `audio_data` - data of the loaded audio
+    /// * `audio_data` - Loaded audio data
     ///
     /// # Returns
     ///
-    /// * `Ok(())` if the file was loaded successfully
-    /// * `Err(...)` if there was an error loading the file or setting the path
+    /// * `Ok(())` if successful
+    /// * `Err(...)` if there was an error setting the file path
     pub fn load_and_set_audio_file(
         &mut self,
         file_path: &Path,
         audio_data: AudioData,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        // Set the buffer and sample rate
-        self.sample_rate = audio_data.spec.sample_rate as f32;
-        self.write_two_buffers(Some(audio_data));
+        // Update buffers with new audio data
+        self.update_buffers(Some(audio_data));
 
-        // If buffer is loaded, we set the sample path
-        match self.get_params().sample_path.write() {
-            Ok(mut path) => *path = Some(file_path.into()),
-            _ => return Err("Couldn't set the file path".into()),
-        };
+        // Set the file path in parameters
+        self.set_sample_path(Some(file_path))?;
 
-        // Load buffer;
         Ok(())
     }
 
+    /// Clears the current sample and resets the player state.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if successful
+    /// * `Err(...)` if there was an error clearing the file path
     pub fn clear_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Reset data
-        self.write_two_buffers(None);
+        // Clear buffers and reset state
+        self.update_buffers(None);
         self.sample_rate = 0.;
         self.adsr.reset();
-        match self.get_params().sample_path.write() {
-            Ok(mut path) => *path = None,
-            _ => return Err("Couldn't set the file path".into()),
-        };
+
+        // Clear the file path
+        self.set_sample_path(None)?;
 
         Ok(())
     }
@@ -213,24 +262,27 @@ impl SamplePlayer {
     ///
     /// # Returns
     ///
-    /// * `Ok(())` if the sample was loaded successfully or no path was stored
+    /// * `Ok(())` if successful or no path was stored
     /// * `Err(...)` if there was an error loading the file
     pub fn load_preset_sample(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Get file path
-        let file_path = match self.get_params().sample_path.read() {
-            Ok(path_guard) => match path_guard.as_ref() {
+        // Get the stored file path
+        let file_path = {
+            let path_guard = self
+                .get_params()
+                .sample_path
+                .read()
+                .map_err(|_| "Failed to acquire read lock on sample path")?;
+
+            match path_guard.as_ref() {
                 Some(path) => path.clone(),
-                None => return Ok(()),
-            },
-            Err(_) => return Err("Error fetching file path".into()),
+                None => return Ok(()), // No path stored, nothing to load
+            }
         };
 
-        // load audio
+        // Load and set the audio data
         let audio_data = utils::load_audio_file(&file_path)?;
+        self.update_buffers(Some(audio_data));
 
-        // Set the buffer and sample rate
-        self.sample_rate = audio_data.spec.sample_rate as f32;
-        self.write_two_buffers(Some(audio_data));
         Ok(())
     }
 
@@ -303,7 +355,7 @@ impl SamplePlayer {
     /// Use this when changing samples or cleaning up resources.
     pub fn cleanup_wrapper(&mut self) {
         // Clear sample data
-        self.write_two_buffers(None);
+        self.update_buffers(None);
 
         // Reset playback state
         self.midi_note = None;
@@ -459,24 +511,6 @@ impl SamplePlayer {
             for (channel_index, sample) in frame.into_iter().enumerate() {
                 *sample += self.next(count, channel_index);
             }
-        }
-    }
-
-    /// Writes audio data to both internal and shared buffers.
-    ///
-    /// The internal buffer write always succeeds and is critical for audio processing.
-    /// If the shared buffer write fails (GUI-related), audio processing continues
-    /// uninterrupted while the GUI may show stale waveform data.
-    #[inline]
-    fn write_two_buffers(&mut self, audio_data: Option<AudioData>) {
-        self.buffer = audio_data.as_ref().map(|audio| audio.data.clone());
-        self.sample_channels = audio_data
-            .as_ref()
-            .map(|audio| audio.spec.channels)
-            .unwrap_or(0) as usize;
-        match self.shared_buffer.write() {
-            Ok(mut buff) => *buff = audio_data,
-            Err(_) => nih_error!("Couldn't write ..."),
         }
     }
 
