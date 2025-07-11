@@ -24,6 +24,8 @@ egui = "0.31.1"
 rfd = "0.15.3"
 egui_plot = "0.32.1"
 egui_knob = "0.3.0"
+tdpsola = "0.1.0"
+pitch-detection = "0.3.0"
 # Uncomment the below line to disable the on-by-default VST3 feature to remove
 # the GPL compatibility requirement
 # nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", default-features = false, features = ["assert_process_allocs"] }

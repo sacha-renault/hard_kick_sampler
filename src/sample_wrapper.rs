@@ -7,6 +7,7 @@ use nih_plug::nih_error;
 
 use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
+use crate::pitch_shift::psola::PsolaShifter;
 use crate::pitch_shift::PitchShiftKind;
 use crate::tasks::AudioData;
 use crate::utils;
@@ -56,6 +57,9 @@ pub struct SamplePlayer {
     /// The adsr envelope
     adsr: MultiChannelAdsr,
 
+    /// For PSOLA
+    psola: Option<PsolaShifter>,
+
     // HERE ARE THE DATA THAT ARE SHARED WITH THE GUI
     /// A copy of the buffer that the GUI can access for display
     shared_buffer: Arc<RwLock<Option<AudioData>>>,
@@ -102,6 +106,7 @@ impl SamplePlayer {
             host_channels: 0,
             sample_channels: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
+            psola: None,
 
             // THINGS FOR GUI
             shared_buffer: Arc::new(RwLock::new(None)),
@@ -129,6 +134,12 @@ impl SamplePlayer {
 
             // Trigger the adsr
             self.adsr.note_on();
+
+            // For psola
+            let pitch_kind = self.get_params().pitch_shift_kind.value();
+            if matches!(pitch_kind, PitchShiftKind::PSOLA) {
+                self.psola.as_mut().map(|p| p.trigger(880.));
+            }
         }
     }
 
@@ -192,6 +203,15 @@ impl SamplePlayer {
     ///
     /// * `audio_data` - New audio data to set, or None to clear buffers
     fn update_buffers(&mut self, audio_data: Option<AudioData>) {
+        // Clear psola
+        self.psola = audio_data.as_ref().and_then(|data| {
+            PsolaShifter::build(
+                &data.data,
+                data.spec.channels as usize,
+                data.spec.sample_rate as usize,
+            )
+        });
+
         // Update internal buffer and metadata
         self.buffer = audio_data.as_ref().map(|data| data.data.clone());
         self.sample_channels = audio_data
@@ -200,7 +220,7 @@ impl SamplePlayer {
             .unwrap_or(0);
 
         // Update sample rate if we have audio data
-        if let Some(ref data) = audio_data {
+        if let Some(data) = audio_data.as_ref() {
             self.sample_rate = data.spec.sample_rate as f32;
         }
 
@@ -504,8 +524,13 @@ impl SamplePlayer {
     }
 
     pub fn process(&mut self, buffer: &mut Buffer, process_count: f32) {
+        if self.is_silent() {
+            return;
+        }
+
         match self.get_params().pitch_shift_kind.value() {
             PitchShiftKind::Classic => self.process_classic(buffer, process_count),
+            PitchShiftKind::PSOLA => self.process_psola(buffer, process_count),
         }
     }
 
@@ -517,6 +542,27 @@ impl SamplePlayer {
         {
             for (channel_index, sample) in frame.into_iter().enumerate() {
                 *sample += self.next(count, channel_index);
+            }
+        }
+    }
+
+    fn process_psola(&mut self, buffer: &mut Buffer, process_count: f32) {
+        let params = self.get_params();
+
+        let psola = match &mut self.psola {
+            Some(p) => p,
+            _ => return,
+        };
+
+        for (count, frame) in buffer
+            .iter_samples()
+            .enumerate()
+            .map(|(i, sample)| (i as f32 + process_count, sample))
+        {
+            if let Some(data) = psola.next(count as usize) {
+                for (sample, value) in frame.into_iter().zip(data) {
+                    *sample += *value;
+                }
             }
         }
     }
