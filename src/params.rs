@@ -223,7 +223,7 @@ impl Default for HardKickSamplerParams {
 
             blend_time: FloatParam::new(
                 "Blend Time",
-                0.0,
+                0.2,
                 FloatRange::Linear { min: 0., max: 0.5 },
             )
             .with_unit(" s")
@@ -231,8 +231,11 @@ impl Default for HardKickSamplerParams {
 
             blend_transition: FloatParam::new(
                 "Blend Transition",
-                0.0,
-                FloatRange::Linear { min: 0., max: 0.5 },
+                0.05,
+                FloatRange::Linear {
+                    min: 0.01,
+                    max: 0.5,
+                },
             )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),

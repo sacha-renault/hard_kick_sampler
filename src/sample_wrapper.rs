@@ -487,12 +487,19 @@ impl SamplePlayer {
         let sustain = params.sustain.value();
         let release = params.release.value();
 
+        // Get the blend value
+        let group = params.blend_group.value();
+        let blend_time = self.params.blend_time.value();
+        let blend_transition = self.params.blend_transition.value();
+        let current_time = process_count / self.host_sample_rate;
+        let blend_gain = utils::get_blend_value(group, current_time, blend_time, blend_transition);
+
         // Get the adrs value
         let adrs_envelope = self
             .adsr
             .next_value(attack, decay, sustain, release, is_first_channel);
 
-        sample_value * gain * adrs_envelope
+        sample_value * gain * adrs_envelope * blend_gain
     }
 
     pub fn process(&mut self, buffer: &mut Buffer, process_count: f32) {

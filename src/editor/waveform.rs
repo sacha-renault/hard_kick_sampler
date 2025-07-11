@@ -81,8 +81,8 @@ impl WavePlot<'_> {
                     (self.blend_time + self.blend_transition / 2.) * self.sample_rate;
 
                 // Convert sample positions to pixel positions
-                let blend_start_pixel = blend_start_sample as f64 / self.num_channels as f64;
-                let blend_end_pixel = blend_end_sample as f64 / self.num_channels as f64;
+                let blend_start_pixel = blend_start_sample as f64;
+                let blend_end_pixel = blend_end_sample as f64;
 
                 // Create plot points: [pixel_position, amplitude]
                 // Start at full amplitude (1.0), maintain until blend starts, then fade to -1.0
@@ -106,9 +106,9 @@ impl WavePlot<'_> {
                     self.delay_start * self.sample_rate + self.buffer.len() as f32;
 
                 // Convert sample positions to pixel positions
-                let blend_start_pixel = blend_start_sample as f64 / self.num_channels as f64;
-                let blend_end_pixel = blend_end_sample as f64 / self.num_channels as f64;
-                let audio_end_pixel = audio_end_sample as f64 / self.num_channels as f64;
+                let blend_start_pixel = blend_start_sample as f64;
+                let blend_end_pixel = blend_end_sample as f64;
+                let audio_end_pixel = audio_end_sample as f64;
 
                 // Create plot points: [pixel_position, amplitude]
                 // Start at negative amplitude, fade to positive, then maintain until end

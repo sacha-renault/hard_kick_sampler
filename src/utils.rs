@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use nih_plug::prelude::{Smoothable, Smoother};
 
-use crate::tasks::AudioData;
+use crate::{params::BlendGroup, tasks::AudioData};
 
 #[inline]
 pub fn load_smooth_param<T: Smoothable>(smoother: &Smoother<T>, is_first_channel: bool) -> T {
@@ -185,4 +185,48 @@ pub fn get_stretch_playback_position(
     let sample_index = frame_index * num_channels + channel_index;
 
     (sample_index, fraction)
+}
+
+#[inline]
+pub fn get_blend_value(
+    group: BlendGroup,
+    current_time: f32,
+    blend_time: f32,
+    blend_transition: f32,
+) -> f32 {
+    let value = match group {
+        BlendGroup::None => 1.,
+        BlendGroup::Start => {
+            let blend_start = blend_time - blend_transition / 2.;
+            let blend_end = blend_start + blend_transition;
+
+            if current_time < blend_start {
+                1.
+            } else if current_time > blend_end {
+                0.
+            } else {
+                (blend_end - current_time) / blend_transition
+            }
+        }
+        BlendGroup::End => {
+            let blend_start = blend_time - blend_transition / 2.0;
+            let blend_end = blend_start + blend_transition;
+
+            if current_time < blend_start {
+                0.0 // Silent before blend starts
+            } else if current_time > blend_end {
+                1.0 // Full volume after blend ends
+            } else {
+                // Linear fade from 0.0 to 1.0 during transition
+                (current_time - blend_start) / blend_transition
+            }
+        }
+    };
+
+    // never too safe in audio processing
+    if !value.is_finite() {
+        1.
+    } else {
+        value.clamp(0., 1.)
+    }
 }
