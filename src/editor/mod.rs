@@ -217,8 +217,7 @@ fn render_waveform_display(
                 (ui.available_height() - theme::SPACE_AMOUNT) / num_channels as f32;
 
             // sample specific stuff
-            let trim_start = params.trim_start.value();
-            let delay_start = params.delay_start.value();
+            let start_offset = params.start_offset.value();
             let position = current_position.load(Ordering::Relaxed);
 
             // The number of data MAXIMUM that can be displayed
@@ -234,8 +233,7 @@ fn render_waveform_display(
             // Data to be displayed
             let wave_plot = WavePlot::new(
                 &shared_data.data,
-                trim_start,
-                delay_start,
+                start_offset,
                 sample_rate,
                 shared_data.spec.channels as usize,
                 position,
@@ -393,7 +391,7 @@ fn render_control_tonal_blend(
 fn render_control_adsr_time_gain(ui: &mut Ui, params: &SamplePlayerParams, setter: &ParamSetter) {
     let width = ui.available_width() - 2. * 8.;
     ui.horizontal(|ui| {
-        render_panel(ui, "Adsr", width * 0.4, PANEL_HEIGHT, |ui| {
+        render_panel(ui, "Adsr", width * 0.6, PANEL_HEIGHT, |ui| {
             ui.horizontal(|ui| {
                 ui.columns(4, |columns| {
                     widgets::create_knob(&mut columns[0], &params.attack, setter, 0.1);
@@ -403,15 +401,12 @@ fn render_control_adsr_time_gain(ui: &mut Ui, params: &SamplePlayerParams, sette
                 });
             });
         });
-        render_panel(ui, "Time Control", width * 0.35, PANEL_HEIGHT, |ui| {
+        render_panel(ui, "Time Control", width * 0.2, PANEL_HEIGHT, |ui| {
             ui.horizontal(|ui| {
-                ui.columns(2, |columns| {
-                    widgets::create_knob(&mut columns[0], &params.trim_start, setter, 0.1);
-                    widgets::create_knob(&mut columns[1], &params.delay_start, setter, 0.1);
-                });
+                widgets::create_knob(ui, &params.start_offset, setter, 0.1);
             });
         });
-        render_panel(ui, "Gain", width * 0.25, PANEL_HEIGHT, |ui| {
+        render_panel(ui, "Gain", width * 0.2, PANEL_HEIGHT, |ui| {
             ui.horizontal(|ui| {
                 ui.vertical_centered(|ui| {
                     widgets::create_knob(ui, &params.gain, setter, 0.025);

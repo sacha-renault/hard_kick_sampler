@@ -42,13 +42,9 @@ pub struct SamplePlayerParams {
     #[id = "release"]
     pub release: FloatParam,
 
-    // Start control (in s)
-    #[id = "trim_start"]
-    pub trim_start: FloatParam,
-
     // Delay start (in s)
-    #[id = "delay_start"]
-    pub delay_start: FloatParam,
+    #[id = "start_offset"]
+    pub start_offset: FloatParam,
 
     #[id = "blend_group"]
     pub blend_group: EnumParam<BlendGroup>,
@@ -152,18 +148,13 @@ impl Default for SamplePlayerParams {
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),
 
-            delay_start: FloatParam::new(
-                "Delay Start",
+            start_offset: FloatParam::new(
+                "Start Offset",
                 0.0,
-                FloatRange::Linear { min: 0., max: 0.5 },
-            )
-            .with_unit(" s")
-            .with_value_to_string(formatters::v2s_f32_rounded(3)),
-
-            trim_start: FloatParam::new(
-                "Trim Start",
-                0.0,
-                FloatRange::Linear { min: 0., max: 0.5 },
+                FloatRange::Linear {
+                    min: -0.5,
+                    max: 0.5,
+                },
             )
             .with_unit(" s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),

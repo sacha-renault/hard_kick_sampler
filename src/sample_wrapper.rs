@@ -444,7 +444,7 @@ impl SamplePlayer {
         let params = self.get_params();
 
         // Get the sample_index
-        let num_frames_delay = params.delay_start.value() * self.sample_rate;
+        let num_frames_delay = 0.; //params.delay_start.value() * self.sample_rate;
         let (sample_index, fraction) = self.get_playback_position(process_count, channel_index);
 
         // Might have early return if current value is < 0

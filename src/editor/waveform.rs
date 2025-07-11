@@ -32,8 +32,7 @@ const N_BEAT_DISPLAYED: f32 = 1.5;
 #[derive(Debug, Constructor)]
 pub struct WavePlot<'a> {
     buffer: &'a Vec<f32>,
-    trim_start: f32,
-    delay_start: f32,
+    start_offset: f32,
     sample_rate: f32,
     num_channels: usize,
     position: u64,
@@ -44,15 +43,29 @@ pub struct WavePlot<'a> {
 }
 
 impl WavePlot<'_> {
+    fn num_silent(&self) -> usize {
+        if self.start_offset < 0. {
+            (-self.start_offset * self.sample_rate) as usize
+        } else {
+            0
+        }
+    }
+
+    fn num_skip(&self) -> usize {
+        if self.start_offset > 0. {
+            (self.start_offset * self.sample_rate) as usize * self.num_channels
+        } else {
+            0
+        }
+    }
+
     pub fn data(&self, channel_index: usize) -> impl Iterator<Item = [f64; 2]> + '_ {
-        let num_skip = (self.trim_start * self.sample_rate) as usize * self.num_channels;
-        let num_silent = (self.delay_start * self.sample_rate) as usize;
         let step = self.num_channels;
 
         get_plot_line(
             self.buffer,
-            num_silent,
-            num_skip,
+            self.num_silent(),
+            self.num_skip(),
             step,
             self.samples_per_beat * N_BEAT_DISPLAYED,
             channel_index,
@@ -60,8 +73,7 @@ impl WavePlot<'_> {
     }
 
     pub fn silent(&self) -> impl Iterator<Item = [f64; 2]> {
-        let num_silent = (self.delay_start * self.sample_rate) as usize;
-        vec![[0.0, 0.0], [num_silent as f64, 0.0]].into_iter()
+        vec![[0.0, 0.0], [self.num_silent() as f64, 0.0]].into_iter()
     }
 
     pub fn position(&self) -> impl Iterator<Item = [f64; 2]> {
@@ -103,7 +115,7 @@ impl WavePlot<'_> {
                 let blend_end_sample =
                     (self.blend_time + self.blend_transition / 2.) * self.sample_rate;
                 let audio_end_sample =
-                    self.delay_start * self.sample_rate + self.buffer.len() as f32;
+                    self.start_offset.max(0.) * self.sample_rate + self.buffer.len() as f32;
 
                 // Convert sample positions to pixel positions
                 let blend_start_pixel = blend_start_sample as f64;
