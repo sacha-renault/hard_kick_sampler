@@ -14,6 +14,7 @@ use nih_plug_egui::{create_egui_editor, EguiState};
 
 use crate::editor::waveform::WavePlot;
 use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
+use crate::pitch_shift::PitchShiftKind;
 use crate::plugin::{HardKickSampler, DEFAULT_BPM};
 use crate::shared_states::SharedStates;
 use crate::tasks::{AudioData, TaskRequests, TaskResults};
@@ -324,6 +325,25 @@ fn render_control_tonal_blend(
                 ui.horizontal(|ui| {
                     ui.label("Semi:");
                     widgets::create_integer_input(ui, &sample_params.semitone_offset, setter);
+
+                    // also add the pitch mode
+                    let current_pitch = sample_params.pitch_shift_kind.value();
+                    if ui
+                        .radio(current_pitch == PitchShiftKind::Classic, "Classic")
+                        .clicked()
+                    {
+                        setter.set_parameter(
+                            &sample_params.pitch_shift_kind,
+                            PitchShiftKind::Classic,
+                        );
+                    }
+                    if ui
+                        .radio(current_pitch == PitchShiftKind::PSOLA, "PSOLA")
+                        .clicked()
+                    {
+                        setter
+                            .set_parameter(&sample_params.pitch_shift_kind, PitchShiftKind::PSOLA);
+                    }
                 });
 
                 widgets::create_toggle_button(ui, &sample_params.is_tonal, setter);

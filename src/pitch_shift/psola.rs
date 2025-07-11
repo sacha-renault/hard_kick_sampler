@@ -10,6 +10,7 @@ pub struct PsolaShifter {
     analysis: Vec<TdpsolaAnalysis>,
     synthesis: Option<Vec<TdpsolaSynthesis>>,
     iter_samples: Option<Vec<Vec<f32>>>,
+    source_length: f32,
 }
 
 impl PsolaShifter {
@@ -43,16 +44,15 @@ impl PsolaShifter {
             analysis: analysis,
             synthesis: None,
             iter_samples: None,
+            source_length: source_wavelength,
         })
     }
 
-    pub fn trigger(&mut self, target_wavelength: f32) {
+    pub fn trigger(&mut self, playback_rate: f32) {
         // Create NEW synthesis objects each time - analysis stays intact!
         let mut synthesis: Vec<TdpsolaSynthesis> = (0..self._hanns.len())
             .map(|_| {
-                let mut s = TdpsolaSynthesis::new(Speed::from_f32(1.0), target_wavelength);
-                s.set_wavelength(target_wavelength);
-                s
+                TdpsolaSynthesis::new(Speed::from_f32(1.0), self.source_length / playback_rate)
             })
             .collect();
 
@@ -67,7 +67,7 @@ impl PsolaShifter {
         self.synthesis = Some(synthesis);
     }
 
-    pub fn next(&mut self, position: usize) -> Option<Vec<&f32>> {
+    pub fn next_frame(&mut self, position: usize) -> Option<Vec<&f32>> {
         self.iter_samples
             .as_ref()?
             .iter()

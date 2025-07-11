@@ -138,7 +138,8 @@ impl SamplePlayer {
             // For psola
             let pitch_kind = self.get_params().pitch_shift_kind.value();
             if matches!(pitch_kind, PitchShiftKind::PSOLA) {
-                self.psola.as_mut().map(|p| p.trigger(880.));
+                let rate = self.get_playback_rate();
+                self.psola.as_mut().map(|p| p.trigger(rate));
             }
         }
     }
@@ -549,6 +550,23 @@ impl SamplePlayer {
     fn process_psola(&mut self, buffer: &mut Buffer, process_count: f32) {
         let params = self.get_params();
 
+        // Get the sr correction
+        let sr_correction = self.get_sr_correction();
+
+        // We don't want those param to be any smoothed!
+        let attack = params.attack.value();
+        let decay = params.decay.value();
+        let sustain = params.sustain.value();
+        let release = params.release.value();
+        let gain = self.params.gain.value();
+
+        // Get the blend value
+        let group = params.blend_group.value();
+        let blend_time = self.params.blend_time.value();
+        let blend_transition = self.params.blend_transition.value();
+        let current_time = process_count / self.host_sample_rate;
+        let blend_gain = utils::get_blend_value(group, current_time, blend_time, blend_transition);
+
         let psola = match &mut self.psola {
             Some(p) => p,
             _ => return,
@@ -559,9 +577,13 @@ impl SamplePlayer {
             .enumerate()
             .map(|(i, sample)| (i as f32 + process_count, sample))
         {
-            if let Some(data) = psola.next(count as usize) {
+            let position = (count * sr_correction) as usize;
+            if let Some(data) = psola.next_frame(position) {
+                // Get the adrs value
+                let adrs_envelope = self.adsr.next_value(attack, decay, sustain, release, true);
+
                 for (sample, value) in frame.into_iter().zip(data) {
-                    *sample += *value;
+                    *sample += *value * gain * adrs_envelope * blend_gain;
                 }
             }
         }
