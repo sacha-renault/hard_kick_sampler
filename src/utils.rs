@@ -168,3 +168,21 @@ pub fn get_root_note_from_filename(file_name: String) -> Option<i32> {
     }
     None
 }
+
+#[inline]
+pub fn get_stretch_playback_position(
+    process_count: f32,
+    sr_correction: f32,
+    playback_rate: f32,
+    num_channels: usize,
+    channel_index: usize,
+) -> (usize, f32) {
+    let raw_playback_position = process_count * sr_correction;
+    let pitched_position = playback_rate * raw_playback_position;
+
+    let frame_index = pitched_position as usize;
+    let fraction = pitched_position.fract();
+    let sample_index = frame_index * num_channels + channel_index;
+
+    (sample_index, fraction)
+}

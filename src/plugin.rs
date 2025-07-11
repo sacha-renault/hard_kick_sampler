@@ -10,7 +10,7 @@ use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
 
-const DEFAULT_TEMPO: f64 = 150.;
+pub const DEFAULT_BPM: f64 = 150.;
 
 pub struct HardKickSampler {
     // Params of the plugin
@@ -240,7 +240,7 @@ impl Plugin for HardKickSampler {
             .for_each(|sp| sp.update_shared_position(self.process_count));
 
         // Set host bpm
-        let tempo = context.transport().tempo.unwrap_or(DEFAULT_TEMPO) as f32;
+        let tempo = context.transport().tempo.unwrap_or(DEFAULT_BPM) as f32;
         self.host_bpm.store(tempo, Ordering::Relaxed);
 
         ProcessStatus::Normal

@@ -330,14 +330,13 @@ impl SamplePlayer {
     /// - `fractional_part` is the sub-sample position for interpolation (0.0 to 1.0)
     #[inline]
     pub fn get_playback_position(&self, process_count: f32, channel_index: usize) -> (usize, f32) {
-        let raw_playback_position = process_count * self.get_sr_correction();
-        let pitched_position = self.get_playback_rate() * raw_playback_position;
-
-        let frame_index = pitched_position as usize;
-        let fraction = pitched_position.fract();
-        let sample_index = frame_index * self.host_channels + channel_index;
-
-        (sample_index, fraction)
+        utils::get_stretch_playback_position(
+            process_count,
+            self.get_sr_correction(),
+            self.get_playback_rate(),
+            self.sample_channels,
+            channel_index,
+        )
     }
 
     /// Returns the sample rate correction factor.
@@ -524,13 +523,16 @@ impl SamplePlayer {
 
     #[inline]
     pub fn update_shared_position(&mut self, process_count: f32) {
-        if !self.is_silent() {
-            let raw_playback_position = process_count * self.get_sr_correction();
-            let pitched_position = self.get_playback_rate() * raw_playback_position;
-            self.shared_playback_position
-                .store(pitched_position as u64, Ordering::Relaxed);
-        } else {
+        // If sample is silent, position is 0
+        if self.is_silent() {
             self.shared_playback_position.store(0, Ordering::Relaxed);
+            return;
         }
+
+        // Else we can store a value
+        let raw_playback_position = process_count * self.get_sr_correction();
+        let pitched_position = self.get_playback_rate() * raw_playback_position;
+        self.shared_playback_position
+            .store(pitched_position as u64, Ordering::Relaxed);
     }
 }

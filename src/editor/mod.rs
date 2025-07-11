@@ -8,13 +8,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use egui::*;
-use nih_plug::prelude::ParamSetter;
+use nih_plug::prelude::{AtomicF32, ParamSetter};
 use nih_plug::{editor::Editor, prelude::AsyncExecutor};
 use nih_plug_egui::{create_egui_editor, EguiState};
 
 use crate::editor::waveform::WavePlot;
 use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
-use crate::plugin::HardKickSampler;
+use crate::plugin::{HardKickSampler, DEFAULT_BPM};
 use crate::shared_states::SharedStates;
 use crate::tasks::{AudioData, TaskRequests, TaskResults};
 use crate::utils;
@@ -204,6 +204,7 @@ fn render_waveform_display(
     params: &SamplePlayerParams,
     global_params: Arc<HardKickSamplerParams>,
     current_position: Arc<AtomicU64>,
+    host_bpm: Arc<AtomicF32>,
 ) {
     // Render image if needed
     match shared_data {
@@ -220,17 +221,28 @@ fn render_waveform_display(
             let delay_start = params.delay_start.value();
             let position = current_position.load(Ordering::Relaxed);
 
+            // The number of data MAXIMUM that can be displayed
+            let loaded_bpm = host_bpm.load(Ordering::Relaxed);
+            let bpm = if loaded_bpm != 0. {
+                loaded_bpm
+            } else {
+                DEFAULT_BPM as f32
+            };
+            let sample_rate = shared_data.spec.sample_rate as f32;
+            let samples_per_beat = (60.0 / bpm) * sample_rate;
+
             // Data to be displayed
             let wave_plot = WavePlot::new(
                 &shared_data.data,
                 trim_start,
                 delay_start,
-                shared_data.spec.sample_rate as f32,
+                sample_rate,
                 shared_data.spec.channels as usize,
                 position,
                 params.blend_group.value(),
                 global_params.blend_time.value(),
                 global_params.blend_transition.value(),
+                samples_per_beat,
             );
 
             // iterate for all the channels available
@@ -476,6 +488,7 @@ pub fn create_editor(
                         current_sample_params,
                         params.clone(),
                         current_position,
+                        states.host_bpm.clone(),
                     );
                 });
             });
