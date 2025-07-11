@@ -70,7 +70,7 @@ impl HardKickSampler {
     /// Trigger the samples to play for all the ones that are loaded
     fn start_sample(&mut self, note: u8, velocity: f32) {
         self.process_count = 0.;
-        for sample in self.sample_players.iter_mut() {
+        for sample in self.sample_players.iter_mut().filter(|sp| !sp.is_muted()) {
             sample.start_playing(note, velocity);
         }
     }

@@ -444,16 +444,17 @@ impl SamplePlayer {
         let params = self.get_params();
 
         // Get the sample_index
-        let num_frames_delay = 0.; //params.delay_start.value() * self.sample_rate;
         let (sample_index, fraction) = self.get_playback_position(process_count, channel_index);
+        let offset = -params.start_offset.value() * self.sample_rate * self.sample_channels as f32;
 
-        // Might have early return if current value is < 0
-        let final_sample_index = match utils::clipping_sub(
-            sample_index,
-            (num_frames_delay * self.host_channels as f32) as usize,
-        ) {
-            Some(v) => v,
-            None => return 0.,
+        // Depending on offset, we add or sub
+        let final_sample_index = if offset > 0. {
+            match utils::clipping_sub(sample_index, offset as usize) {
+                Some(v) => v,
+                None => return 0.,
+            }
+        } else {
+            (sample_index as f32 - offset) as usize
         };
 
         // Get current and next frame
