@@ -139,7 +139,8 @@ impl SamplePlayer {
             let pitch_kind = self.get_params().pitch_shift_kind.value();
             if matches!(pitch_kind, PitchShiftKind::PSOLA) {
                 let rate = self.get_playback_rate();
-                self.psola.as_mut().map(|p| p.trigger(rate));
+                let sr_correct = self.get_sr_correction();
+                self.psola.as_mut().map(|p| p.trigger(sr_correct, rate));
             }
         }
     }
@@ -558,7 +559,8 @@ impl SamplePlayer {
         let decay = params.decay.value();
         let sustain = params.sustain.value();
         let release = params.release.value();
-        let gain = self.params.gain.value();
+        let gain = params.gain.value();
+        let top_gain = self.params.gain.value();
 
         // Get the blend value
         let group = params.blend_group.value();
@@ -578,12 +580,12 @@ impl SamplePlayer {
             .map(|(i, sample)| (i as f32 + process_count, sample))
         {
             let position = (count * sr_correction) as usize;
-            if let Some(data) = psola.next_frame(position) {
+            if let Some(data) = psola.get_frame(position) {
                 // Get the adrs value
                 let adrs_envelope = self.adsr.next_value(attack, decay, sustain, release, true);
 
                 for (sample, value) in frame.into_iter().zip(data) {
-                    *sample += *value * gain * adrs_envelope * blend_gain;
+                    *sample += value * top_gain * adrs_envelope * blend_gain * gain;
                 }
             }
         }
@@ -607,8 +609,11 @@ impl SamplePlayer {
 
         // Else we can store a value
         let raw_playback_position = process_count * self.get_sr_correction();
-        let pitched_position = self.get_playback_rate() * raw_playback_position;
+        let position = match self.get_params().pitch_shift_kind.value() {
+            PitchShiftKind::Classic => self.get_playback_rate() * raw_playback_position,
+            _ => raw_playback_position, // All algo that doesn't stretch audio length
+        };
         self.shared_playback_position
-            .store(pitched_position as u64, Ordering::Relaxed);
+            .store(position as u64, Ordering::Relaxed);
     }
 }

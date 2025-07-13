@@ -3,7 +3,7 @@ use pitch_detection::detector::PitchDetector;
 use tdpsola::{AlternatingHann, Speed, TdpsolaAnalysis, TdpsolaSynthesis};
 
 const POWER_THRESHOLD: f32 = 5.0;
-const CLARITY_THRESHOLD: f32 = 0.7;
+const CLARITY_THRESHOLD: f32 = 0.1;
 
 pub struct PsolaShifter {
     _hanns: Vec<AlternatingHann>,
@@ -15,10 +15,15 @@ pub struct PsolaShifter {
 
 impl PsolaShifter {
     pub fn build(sample_buffer: &[f32], channel_number: usize, sample_rate: usize) -> Option<Self> {
-        let scratch_size = sample_buffer.len() * 4;
-        let mut detector = McLeodDetector::new(sample_buffer.len(), scratch_size);
+        let scratch_size = sample_buffer.len() * 2;
+        let single_channel = sample_buffer
+            .iter()
+            .step_by(channel_number)
+            .copied()
+            .collect::<Vec<f32>>();
+        let mut detector = McLeodDetector::new(single_channel.len(), scratch_size);
         let pitch = detector.get_pitch(
-            sample_buffer,
+            &single_channel,
             sample_rate,
             POWER_THRESHOLD,
             CLARITY_THRESHOLD,
@@ -48,11 +53,14 @@ impl PsolaShifter {
         })
     }
 
-    pub fn trigger(&mut self, playback_rate: f32) {
+    pub fn trigger(&mut self, sr_correction: f32, playback_rate: f32) {
         // Create NEW synthesis objects each time - analysis stays intact!
         let mut synthesis: Vec<TdpsolaSynthesis> = (0..self._hanns.len())
             .map(|_| {
-                TdpsolaSynthesis::new(Speed::from_f32(1.0), self.source_length / playback_rate)
+                TdpsolaSynthesis::new(
+                    Speed::from_f32(sr_correction),
+                    self.source_length / playback_rate,
+                )
             })
             .collect();
 
@@ -67,11 +75,11 @@ impl PsolaShifter {
         self.synthesis = Some(synthesis);
     }
 
-    pub fn next_frame(&mut self, position: usize) -> Option<Vec<&f32>> {
+    pub fn get_frame(&mut self, position: usize) -> Option<Vec<f32>> {
         self.iter_samples
             .as_ref()?
             .iter()
-            .map(|channels| channels.get(position))
+            .map(|channels| channels.get(position).copied())
             .collect()
     }
 }
