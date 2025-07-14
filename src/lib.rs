@@ -1,5 +1,6 @@
 mod adsr;
-mod editor;
+// mod editor;
+mod editor_vizia;
 mod params;
 mod pitch_shift;
 mod plugin;

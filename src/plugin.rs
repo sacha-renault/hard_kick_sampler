@@ -3,7 +3,6 @@ use std::num::NonZero;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-use crate::editor::create_editor;
 use crate::params::{HardKickSamplerParams, MAX_SAMPLES};
 use crate::sample_wrapper::SamplePlayer;
 use crate::shared_states::SharedStates;
@@ -261,7 +260,7 @@ impl Plugin for HardKickSampler {
                 .collect(),
             host_bpm: self.host_bpm.clone(),
         };
-        create_editor(state, async_executor)
+        crate::editor_vizia::create_editor(Arc::new(state), async_executor)
     }
 
     fn task_executor(&mut self) -> TaskExecutor<Self> {
