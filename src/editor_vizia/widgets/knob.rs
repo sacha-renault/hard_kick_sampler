@@ -47,7 +47,11 @@ impl ParamKnob {
                             param_data.param().normalized_value_to_string(*val, true)
                         }),
                     );
-                }); // No return here, the semicolon makes it return ()
+                })
+                .class("knob-container")
+                .child_space(Stretch(1.0))
+                .row_between(Pixels(0.0))
+                .col_between(Pixels(0.0));
             }),
         )
     }

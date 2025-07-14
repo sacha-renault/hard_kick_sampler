@@ -1,0 +1,45 @@
+label {
+    font-size: 14px;
+    color: white;
+}
+
+button:hover {
+    background-color: grey;
+    border-width: 0px;
+}
+
+button.tab {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+knob {
+    width: 45px;
+    height: 45px;
+    color: #ff8c00;
+}
+
+.knob-head {
+    background-color: #404040;
+    border: 1px #262a2d solid;
+}
+
+.knob-tick {
+    background-color: white;
+}
+
+/* .knob-container {
+    alignment: center;
+} */
+
+.widget-panel {
+    border: 1px solid #404040;
+}
+
+.widget-panel .panel-title {
+    color: #ff8c00
+}
+
+.title {
+    font-size: 36;
+}

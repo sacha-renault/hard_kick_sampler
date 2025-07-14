@@ -1,3 +1,4 @@
+mod style;
 mod widgets;
 
 use std::sync::Arc;
@@ -15,6 +16,7 @@ use crate::plugin::{HardKickSampler, DEFAULT_BPM};
 use crate::shared_states::SharedStates;
 use crate::tasks::{AudioData, TaskRequests, TaskResults};
 use crate::utils;
+use style::*;
 
 #[derive(Lens)]
 pub struct Data {
@@ -38,11 +40,11 @@ pub fn create_editor(
     _async_executor: AsyncExecutor<HardKickSampler>,
 ) -> Option<Box<dyn Editor>> {
     create_vizia_editor(
-        ViziaState::new(|| (800, 600)),
-        nih_plug_vizia::ViziaTheming::Custom,
-        move |cx, gui_cx| {
-            assets::register_noto_sans_light(cx);
-            assets::register_noto_sans_thin(cx);
+        ViziaState::new(|| (801, 600)),
+        nih_plug_vizia::ViziaTheming::None,
+        move |cx, _| {
+            cx.add_stylesheet(include_style!("src/editor_vizia/style.css"))
+                .expect("Coudln't load css file.");
 
             // Build data
             Data {
@@ -52,22 +54,42 @@ pub fn create_editor(
 
             VStack::new(cx, |cx| {
                 // Title (and logo later)
-                Label::new(cx, "Hard Kick Sampler").font_size(36.);
+                Label::new(cx, "Hard Kick Sampler")
+                    .color(TEXT_COLOR_ACCENT)
+                    .class("title");
 
                 // Tabs to select samples
                 HStack::new(cx, |cx| {
                     for index in 0..MAX_SAMPLES {
                         let txt = format!("Sample {}", index + 1);
-                        Button::new(cx, |_| {}, |cx| Label::new(cx, &txt));
+                        Button::new(
+                            cx,
+                            |_| {},
+                            |cx| Label::new(cx, &txt).cursor(CursorIcon::Hand),
+                        )
+                        .hoverable(true)
+                        .class("tab");
                     }
                 });
 
                 // Pannels
                 HStack::new(cx, |cx| {
-                    widgets::ParamKnob::new(cx, Data::states, |st| &st.params.gain);
-                    ParamSlider::new(cx, Data::states, |st| &st.params.gain);
+                    widgets::WidgetPanel::new(cx, "Tonal", |cx| {});
+                    widgets::WidgetPanel::new(cx, "Blend Group", |cx| {});
+                    widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {});
                 });
-            });
+
+                HStack::new(cx, |cx| {
+                    widgets::WidgetPanel::new(cx, "ADSR", |cx| {});
+                    widgets::WidgetPanel::new(cx, "Time Control", |cx| {});
+                    widgets::WidgetPanel::new(cx, "Gain", |cx| {
+                        widgets::ParamKnob::new(cx, Data::states, |st| &st.params.gain);
+                    });
+                });
+
+                HStack::new(cx, |cx| {});
+            })
+            .background_color(BACKGROUND_COLOR);
         },
     )
 }
