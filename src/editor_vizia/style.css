@@ -13,6 +13,10 @@ button.tab {
     border-top-right-radius: 10px;
 }
 
+button.selected {
+    background-color: grey;
+}
+
 knob {
     width: 45px;
     height: 45px;
