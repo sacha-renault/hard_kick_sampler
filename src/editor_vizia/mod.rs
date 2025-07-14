@@ -1,3 +1,5 @@
+mod widgets;
+
 use std::sync::Arc;
 
 use nih_plug::prelude::*;
@@ -62,24 +64,8 @@ pub fn create_editor(
 
                 // Pannels
                 HStack::new(cx, |cx| {
-                    ParamWidgetBase::view(
-                        cx,
-                        Data::states,
-                        |st| &st.params.gain,
-                        |cx, param_ptr| {
-                            Knob::new(
-                                cx,
-                                param_ptr.param().default_normalized_value(),
-                                param_ptr.make_lens(|p| p.modulated_normalized_value()),
-                                false,
-                            )
-                            .on_changing(move |_, val| {
-                                // Use the ParamSetter to update the parameter
-                                let param_setter = ParamSetter::new(gui_cx.as_ref());
-                                param_setter.set_parameter_normalized(param_ptr.param(), val);
-                            });
-                        },
-                    );
+                    widgets::ParamKnob::new(cx, Data::states, |st| &st.params.gain);
+                    ParamSlider::new(cx, Data::states, |st| &st.params.gain);
                 });
             });
         },
