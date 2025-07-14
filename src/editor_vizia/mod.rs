@@ -5,8 +5,6 @@ use std::sync::Arc;
 
 use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
-use nih_plug_vizia::widgets::ParamSlider;
 use nih_plug_vizia::{assets, create_vizia_editor, ViziaState};
 
 // use crate::editor::waveform::WavePlot;
@@ -105,6 +103,7 @@ pub fn create_editor(
                                 });
                             });
                         })
+                        .col_between(Units::Pixels(PANEL_SPACING))
                         .height(Stretch(1.0)); // Equal height distribution
 
                         // Second panel row - equal height
@@ -133,6 +132,7 @@ pub fn create_editor(
                             })
                             .width(Stretch(0.25));
                         })
+                        .col_between(Units::Pixels(PANEL_SPACING))
                         .height(Stretch(1.0)); // Equal height distribution
 
                         // Third panel row - equal height
@@ -141,9 +141,11 @@ pub fn create_editor(
                         })
                         .height(Stretch(1.0)); // Equal height distribution
                     })
+                    .row_between(Units::Pixels(PANEL_SPACING))
                     .height(Stretch(1.0)); // This VStack should take remaining space
                 });
             })
+            .child_space(Units::Pixels(MAIN_PADDING))
             .background_color(BACKGROUND_COLOR);
         },
     )

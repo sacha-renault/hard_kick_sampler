@@ -1,6 +1,6 @@
 use nih_plug_vizia::vizia::prelude::*;
 
-use super::super::style::*;
+use crate::editor_vizia::style::*;
 
 pub struct WidgetPanel;
 
@@ -12,13 +12,13 @@ impl WidgetPanel {
     {
         VStack::new(cx, |cx| {
             // Title
-            Label::new(cx, title)
-                .color(TEXT_COLOR_ACCENT)
-                .class("panel-title");
+            Label::new(cx, title).class("panel-title");
 
             // Content area
             HStack::new(cx, content).class("panel-content");
         })
+        .child_space(Units::Pixels(PANEL_PADDING))
+        .border_radius(Units::Pixels(BORDER_RADIUS))
         .class("widget-panel")
     }
 }
