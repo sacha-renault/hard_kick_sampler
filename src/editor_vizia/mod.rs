@@ -103,7 +103,7 @@ pub fn create_editor(
                                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
                                     &get_param(st, index).root_note
                                 })
-                                .width(Pixels(42.))
+                                .class("root-note-select")
                                 .disabled(
                                     Data::states.map(move |st| {
                                         get_param(st, index).is_tonal.value() == false

@@ -55,6 +55,10 @@ impl View for ParamDragNumber {
     }
 
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        if cx.is_disabled() {
+            return;
+        }
+
         event.map(|_reset_event: &ResetEvent, meta| {
             self.param_base.begin_set_parameter(cx);
 

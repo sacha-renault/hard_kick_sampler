@@ -37,7 +37,20 @@ button.selected {
     child-bottom: 3px;
 }
 
+.drag-input:active,
 .drag-input:hover {
     background-color: #404040;
     transition: background-color 100ms;
+}
+
+.drag-input:active:disabled,
+.checkbox:hover:disabled {
+    border: 1px solid;
+    border-radius: 4px;
+    background-color: #343434;
+    transition: background-color 100ms;
+}
+
+.root-note-select .drag-input {
+    width: 42px;
 }
