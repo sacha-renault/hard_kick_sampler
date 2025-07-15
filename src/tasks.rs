@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use derive_more::{Constructor, From, Into};
 use hound::WavSpec;
 
-#[derive(Debug, Constructor, Into, From)]
+#[derive(Debug, Constructor, Into, From, Clone)]
 pub struct AudioData {
     pub spec: WavSpec,
     pub data: Vec<f32>,

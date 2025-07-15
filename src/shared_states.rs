@@ -21,13 +21,9 @@ pub struct SharedStates {
 }
 
 impl SharedStates {
-    pub fn get_buffer_copy(&self, index: usize) -> Option<Vec<f32>> {
-        self.shared_buffer[index]
-            .read()
-            .ok()?
-            .as_ref()?
-            .data
-            .clone()
-            .into()
+    pub fn get_buffer_copy(&self, index: usize) -> Option<AudioData> {
+        let guard = self.shared_buffer[index].read().ok()?;
+        let audio_data = guard.as_ref()?;
+        Some(audio_data.clone())
     }
 }

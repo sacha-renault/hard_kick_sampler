@@ -1,3 +1,4 @@
+mod customs;
 mod style;
 mod widgets;
 
@@ -316,41 +317,58 @@ pub fn create_editor(
                             .class("widget-panel")
                             .class("sample-info-strip");
 
-                            // The display for waves
-                            VStack::new(cx, |cx| {
-                                let buffer = Data::states.map(move |st| st.get_buffer_copy(index));
-                                if let Some(data) = buffer.get(cx) {
-                                    ZStack::new(cx, |cx| {
-                                        // background canvas
-                                        Grid::new(
-                                            cx,
-                                            ValueScaling::Linear,
-                                            (-1., 1.),
-                                            vec![0.],
-                                            Orientation::Horizontal,
-                                        );
+                            // Make a special length for the waveshape
+                            let binding_lens = Data::states.map(move |st| {
+                                let param = get_param(st, index);
+                                (
+                                    param.sample_path.read().ok().and_then(|guard| {
+                                        guard
+                                            .as_ref()
+                                            .and_then(|path| path.to_str().map(String::from))
+                                    }),
+                                    param.start_offset.value(),
+                                )
+                            });
 
-                                        // Waveform canvas
-                                        widgets::Waveform::new(
-                                            cx,
-                                            buffer.map(|b| {
-                                                b.clone()
-                                                    .map(|data| {
-                                                        data.into_iter().step_by(2).collect()
-                                                    })
-                                                    .unwrap()
-                                            }),
-                                        )
-                                        .outline_width(Pixels(1.0));
+                            // Create a binding so the entire wave isn't always redrawn
+                            Binding::new(cx, binding_lens, move |cx, new_value| {
+                                // The display for waves
+                                VStack::new(cx, |cx| {
+                                    let buffer = Data::states.get(cx).get_buffer_copy(index);
+                                    if let Some(data) = buffer {
+                                        ZStack::new(cx, |cx| {
+                                            // background canvas
+                                            Grid::new(
+                                                cx,
+                                                ValueScaling::Linear,
+                                                (-1., 1.),
+                                                vec![0.],
+                                                Orientation::Horizontal,
+                                            );
 
-                                        // Position canvas
+                                            // Waveform canvas
+                                            // TODO
+                                            // DO something better here!
+                                            let num_channel = data.spec.channels as usize;
+                                            let final_data =
+                                                data.data.into_iter().step_by(num_channel);
+                                            let silent = 44100. * new_value.get(cx).1;
+                                            let silent_vec = vec![0.; silent as usize];
+                                            widgets::Waveform::new(
+                                                cx,
+                                                silent_vec.into_iter().chain(final_data).collect(),
+                                            )
+                                            .outline_width(Pixels(1.0));
 
-                                        // Something else ...
-                                    });
-                                }
-                            })
-                            .class("waveform-vizualizer")
-                            .height(Stretch(1.0));
+                                            // Position canvas
+
+                                            // Something else ...
+                                        });
+                                    }
+                                })
+                                .class("waveform-vizualizer")
+                                .height(Stretch(1.0));
+                            });
                         })
                         .row_between(Units::Pixels(PANEL_SPACING))
                         .height(Stretch(2.0));
