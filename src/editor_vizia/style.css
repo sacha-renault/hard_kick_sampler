@@ -870,17 +870,17 @@ switch:focus-visible {
 }
 
 switch:checked .switch-handle-bg {
-    background-color: #51afef40;
+    background-color: #b8530d40;
     transition: background-color 100ms;
 }
 
 switch:checked .switch-handle {
-    background-color: #51afef;
+    background-color: #ff8c00;
     transition: background-color 100ms;
 }
 
 switch:checked:hover .switch-handle {
-    background-color: #80caff;
+    background-color: #ff8c00;
     transition: background-color 100ms;
 }
 

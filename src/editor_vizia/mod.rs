@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::{assets, create_vizia_editor, ViziaState};
+use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
 // use crate::editor::waveform::WavePlot;
 use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
@@ -92,7 +92,12 @@ pub fn create_editor(
                     VStack::new(cx, |cx| {
                         // First panel row - equal height
                         HStack::new(cx, |cx| {
-                            widgets::WidgetPanel::new(cx, "Tonal", |cx| {}).width(Stretch(0.3));
+                            widgets::WidgetPanel::new(cx, "Tonal", |cx| {
+                                widgets::ParamToggle::new(cx, Data::states, move |st| {
+                                    &get_param(st, index).is_tonal
+                                });
+                            })
+                            .width(Stretch(0.3));
                             widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
                                 widgets::ParamRadio::vertical(
                                     cx,
