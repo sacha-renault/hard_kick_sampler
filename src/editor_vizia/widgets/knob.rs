@@ -12,6 +12,7 @@ impl ParamKnob {
         cx: &mut Context,
         params: L,
         params_to_param: FMap,
+        centered: bool,
     ) -> Handle<Self>
     where
         L: Lens<Target = Params> + Clone,
@@ -35,7 +36,7 @@ impl ParamKnob {
                         cx,
                         param_data.param().default_normalized_value(),
                         param_data.make_lens(|p| p.modulated_normalized_value()),
-                        false,
+                        centered,
                     )
                     .on_changing(|cx, val| {
                         cx.emit(KnobChangeEvent(val));
@@ -50,10 +51,23 @@ impl ParamKnob {
                 })
                 .class("knob-container")
                 .child_space(Stretch(1.0))
-                .row_between(Pixels(0.0))
-                .col_between(Pixels(0.0));
+                .row_between(Stretch(1.0));
             }),
         )
+    }
+
+    pub fn new_left_align<L, Params, P, FMap>(
+        cx: &mut Context,
+        params: L,
+        params_to_param: FMap,
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Params> + Clone,
+        Params: 'static,
+        P: Param + 'static,
+        FMap: Fn(&Params) -> &P + Copy + 'static,
+    {
+        Self::new(cx, params, params_to_param, false)
     }
 }
 

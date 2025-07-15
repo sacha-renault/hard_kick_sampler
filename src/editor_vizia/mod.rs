@@ -8,8 +8,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
 // use crate::editor::waveform::WavePlot;
-use crate::params::{BlendGroup, HardKickSamplerParams, SamplePlayerParams, MAX_SAMPLES};
-use crate::pitch_shift::PitchShiftKind;
+use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::{HardKickSampler, DEFAULT_BPM};
 use crate::shared_states::SharedStates;
 use crate::tasks::{AudioData, TaskRequests, TaskResults};
@@ -92,10 +91,21 @@ pub fn create_editor(
                     VStack::new(cx, |cx| {
                         // First panel row - equal height
                         HStack::new(cx, |cx| {
-                            widgets::WidgetPanel::new(cx, "Tonal", |cx| {
+                            widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
+                                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                                    &get_param(st, index).semitone_offset
+                                });
                                 widgets::ParamToggle::new(cx, Data::states, move |st| {
                                     &get_param(st, index).is_tonal
                                 });
+                                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                                    &get_param(st, index).root_note
+                                })
+                                .disabled(
+                                    Data::states.map(move |st| {
+                                        get_param(st, index).is_tonal.value() == false
+                                    }),
+                                );
                             })
                             .width(Stretch(0.3));
                             widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
@@ -117,10 +127,10 @@ pub fn create_editor(
                             })
                             .width(Stretch(0.2));
                             widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &st.params.blend_time
                                 });
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &st.params.blend_transition
                                 });
                             })
@@ -132,24 +142,31 @@ pub fn create_editor(
                         // Second panel row - equal height
                         HStack::new(cx, |cx| {
                             widgets::WidgetPanel::new(cx, "ADSR", |cx| {
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &get_param(st, index).attack
                                 });
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &get_param(st, index).decay
                                 });
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &get_param(st, index).sustain
                                 });
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &get_param(st, index).release
                                 });
                             })
                             .width(Stretch(0.5));
-                            widgets::WidgetPanel::new(cx, "Time Control", |cx| {})
-                                .width(Stretch(0.25));
+                            widgets::WidgetPanel::new(cx, "Time Control", |cx| {
+                                widgets::ParamKnob::new(
+                                    cx,
+                                    Data::states,
+                                    move |st| &get_param(st, index).start_offset,
+                                    true,
+                                );
+                            })
+                            .width(Stretch(0.25));
                             widgets::WidgetPanel::new(cx, "Gain", |cx| {
-                                widgets::ParamKnob::new(cx, Data::states, move |st| {
+                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
                                     &get_param(st, index).gain
                                 });
                             })

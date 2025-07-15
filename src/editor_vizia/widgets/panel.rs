@@ -21,4 +21,20 @@ impl WidgetPanel {
         .border_radius(Units::Pixels(BORDER_RADIUS))
         .class("widget-panel")
     }
+
+    pub fn vnew<'a, F>(cx: &'a mut Context, title: &str, content: F) -> Handle<'a, VStack>
+    where
+        F: FnOnce(&mut Context),
+    {
+        VStack::new(cx, |cx| {
+            // Title
+            Label::new(cx, title).class("panel-title");
+
+            // Content area
+            VStack::new(cx, content).class("panel-content");
+        })
+        .child_space(Units::Pixels(PANEL_PADDING))
+        .border_radius(Units::Pixels(BORDER_RADIUS))
+        .class("widget-panel")
+    }
 }
