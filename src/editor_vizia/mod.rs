@@ -68,6 +68,303 @@ pub fn get_param(st: &Arc<SharedStates>, index: usize) -> &SamplePlayerParams {
     &st.params.samples[index]
 }
 
+fn create_title_section(cx: &mut Context) {
+    // Title - this doesn't need to change
+    Label::new(cx, "Hard Kick Sampler")
+        .color(TEXT_COLOR_ACCENT)
+        .class("title");
+}
+
+fn create_sample_tabs(cx: &mut Context) {
+    // Tabs - OUTSIDE the binding so they keep their event handlers
+    HStack::new(cx, |cx| {
+        for index in 0..MAX_SAMPLES {
+            let txt = format!("Sample {}", index + 1);
+            Button::new(
+                cx,
+                move |cx| cx.emit(AppEvent::SelectSample(index)), // Add the event handler!
+                |cx| Label::new(cx, &txt).cursor(CursorIcon::Hand),
+            )
+            .hoverable(true)
+            .class("tab")
+            .toggle_class(
+                "selected",
+                Data::selected_sample.map(move |selected| *selected == index),
+            );
+        }
+    })
+    .width(Stretch(1.0))
+    .height(Auto);
+}
+
+fn create_first_panel_row(cx: &mut Context, index: usize) {
+    // First panel row - equal height
+    HStack::new(cx, |cx| {
+        widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
+            widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                &get_param(st, index).semitone_offset
+            });
+            widgets::ParamSwitch::new(cx, Data::states, move |st| &get_param(st, index).is_tonal);
+            widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                &get_param(st, index).root_note
+            })
+            .class("root-note-select")
+            .disabled(Data::states.map(move |st| get_param(st, index).is_tonal.value() == false));
+        })
+        .width(Stretch(0.3));
+        widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
+            widgets::ParamRadio::vertical(
+                cx,
+                Data::states,
+                move |st| &get_param(st, index).pitch_shift_kind,
+                false,
+            );
+        })
+        .width(Stretch(0.2));
+        widgets::WidgetPanel::new(cx, "Blend Group", |cx| {
+            widgets::ParamRadio::vertical(
+                cx,
+                Data::states,
+                move |st| &get_param(st, index).blend_group,
+                false,
+            );
+        })
+        .width(Stretch(0.2));
+        widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| &st.params.blend_time);
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
+                &st.params.blend_transition
+            });
+        })
+        .width(Stretch(0.3));
+    })
+    .col_between(Units::Pixels(PANEL_SPACING))
+    .height(Stretch(1.0)); // Equal height distribution
+}
+
+fn create_second_panel_row(cx: &mut Context, index: usize) {
+    // Second panel row - equal height
+    HStack::new(cx, |cx| {
+        widgets::WidgetPanel::new(cx, "ADSR", |cx| {
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
+                &get_param(st, index).attack
+            });
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
+                &get_param(st, index).decay
+            });
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
+                &get_param(st, index).sustain
+            });
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
+                &get_param(st, index).release
+            });
+        })
+        .width(Stretch(0.5));
+        widgets::WidgetPanel::new(cx, "Time Control", |cx| {
+            widgets::ParamKnob::new(
+                cx,
+                Data::states,
+                move |st| &get_param(st, index).start_offset,
+                true,
+            );
+        })
+        .width(Stretch(0.25));
+        widgets::WidgetPanel::new(cx, "Gain", |cx| {
+            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
+                &get_param(st, index).gain
+            });
+        })
+        .width(Stretch(0.25));
+    })
+    .col_between(Units::Pixels(PANEL_SPACING))
+    .height(Stretch(1.0)); // Equal height distribution
+}
+
+fn create_sample_info_strip(cx: &mut Context, index: usize) {
+    // Get the lens of current file
+    let file_path = Data::states.map(move |st| {
+        get_param(st, index)
+            .sample_path
+            .read()
+            .ok()
+            .and_then(|guard| {
+                guard
+                    .as_ref()
+                    .and_then(|path| path.to_str().map(String::from))
+            })
+    });
+    let file_name = Data::states.map(move |st| {
+        get_param(st, index)
+            .sample_path
+            .read()
+            .ok()
+            .and_then(|guard| {
+                guard.as_ref().and_then(|path| {
+                    path.file_name()
+                        .and_then(|name| name.to_str())
+                        .map(String::from)
+                })
+            })
+    });
+
+    // The bar for selecting sample ... etc
+    HStack::new(cx, |cx| {
+        // Button for mute / unmute
+        widgets::ParamSwitch::new(cx, Data::states, move |st| &get_param(st, index).muted)
+            .width(Stretch(1.0));
+
+        // Sample Name
+        Label::new(
+            cx,
+            file_name.map(|v| v.clone().unwrap_or_else(|| "No sample loaded".into())),
+        )
+        .width(Stretch(1.0));
+
+        // Btn group
+        create_button_group(cx, index, file_path);
+    })
+    .width(Stretch(1.0))
+    .height(Auto)
+    .class("widget-panel")
+    .class("sample-info-strip");
+}
+
+fn create_button_group(
+    cx: &mut Context,
+    index: usize,
+    file_path: impl Lens<Target = Option<String>>,
+) {
+    HStack::new(cx, |cx| {
+        let next_file = file_path.map(|path| {
+            path.clone()
+                .map(|path| utils::get_next_file_in_directory_wrap(&path))
+                .flatten()
+        });
+        let previous_file = file_path.map(|path| {
+            path.clone()
+                .map(|path| utils::get_previous_file_in_directory_wrap(&path))
+                .flatten()
+        });
+        Button::new(
+            cx,
+            move |cx| {
+                cx.spawn(move |proxy: &mut ContextProxy| {
+                    let path_opt = rfd::FileDialog::new()
+                        .add_filter("audio", &["wav"])
+                        .pick_file();
+                    if let Some(path) = path_opt {
+                        // We send a message > load audio
+                        let _ = proxy.emit(AppEvent::FileLoading(index, path));
+                    }
+                });
+            },
+            |cx| Label::new(cx, "📂"),
+        );
+        Button::new(
+            cx,
+            move |cx| {
+                if let Some(path) = previous_file.get(cx) {
+                    cx.emit(AppEvent::FileLoading(index, path));
+                }
+            },
+            |cx| Label::new(cx, "<"),
+        )
+        .disabled(previous_file.map(|v| v.is_none()));
+        Button::new(
+            cx,
+            move |cx| {
+                if let Some(path) = next_file.get(cx) {
+                    cx.emit(AppEvent::FileLoading(index, path));
+                }
+            },
+            |cx| Label::new(cx, ">"),
+        )
+        .disabled(next_file.map(|v| v.is_none()));
+        Button::new(cx, |_| {}, |cx| Label::new(cx, "🗑️"));
+    })
+    .col_between(Pixels(2.0))
+    .height(Auto)
+    .child_left(Stretch(1.0))
+    .width(Stretch(1.0));
+}
+
+fn create_waveform_section(cx: &mut Context, index: usize) {
+    // Make a special length for the waveshape
+    let binding_lens = Data::states.map(move |st| {
+        let param = get_param(st, index);
+        (
+            param.sample_path.read().ok().and_then(|guard| {
+                guard
+                    .as_ref()
+                    .and_then(|path| path.to_str().map(String::from))
+            }),
+            param.start_offset.value(),
+        )
+    });
+
+    // Create a binding so the entire wave isn't always redrawn
+    Binding::new(cx, binding_lens, move |cx, new_value| {
+        // The display for waves
+        VStack::new(cx, |cx| {
+            let buffer = Data::states.get(cx).get_buffer_copy(index);
+            if let Some(data) = buffer {
+                ZStack::new(cx, |cx| {
+                    // background canvas
+                    Grid::new(
+                        cx,
+                        ValueScaling::Linear,
+                        (-1., 1.),
+                        vec![0.],
+                        Orientation::Horizontal,
+                    );
+
+                    // Waveform canvas
+                    // TODO
+                    // DO something better here!
+                    let num_channel = data.spec.channels as usize;
+                    let final_data = data.data.into_iter().step_by(num_channel);
+                    let silent = 44100. * new_value.get(cx).1;
+                    let silent_vec = vec![0.; silent as usize];
+                    widgets::Waveform::new(cx, silent_vec.into_iter().chain(final_data).collect())
+                        .outline_width(Pixels(1.0));
+
+                    // Position canvas
+
+                    // Something else ...
+                });
+            }
+        })
+        .class("waveform-vizualizer")
+        .height(Stretch(1.0));
+    });
+}
+
+fn create_third_panel_row(cx: &mut Context, index: usize) {
+    // Third panel row - equal height
+    VStack::new(cx, |cx| {
+        create_sample_info_strip(cx, index);
+        create_waveform_section(cx, index);
+    })
+    .row_between(Units::Pixels(PANEL_SPACING))
+    .height(Stretch(2.0));
+}
+
+fn create_parameter_panels(cx: &mut Context) {
+    // Only the parameter panels should be inside the binding
+    Binding::new(cx, Data::selected_sample, |cx, selected_idx| {
+        let index = selected_idx.get(cx);
+
+        // Wrap all three HStacks in a VStack with a constrained height
+        VStack::new(cx, |cx| {
+            create_first_panel_row(cx, index);
+            create_second_panel_row(cx, index);
+            create_third_panel_row(cx, index);
+        })
+        .row_between(Units::Pixels(PANEL_SPACING))
+        .height(Stretch(1.0)); // This VStack should take remaining space
+    });
+}
+
 pub fn create_editor(
     states: Arc<SharedStates>,
     async_executor: AsyncExecutor<HardKickSampler>,
@@ -90,292 +387,9 @@ pub fn create_editor(
             .build(cx);
 
             VStack::new(cx, |cx| {
-                // Title - this doesn't need to change
-                Label::new(cx, "Hard Kick Sampler")
-                    .color(TEXT_COLOR_ACCENT)
-                    .class("title");
-
-                // Tabs - OUTSIDE the binding so they keep their event handlers
-                HStack::new(cx, |cx| {
-                    for index in 0..MAX_SAMPLES {
-                        let txt = format!("Sample {}", index + 1);
-                        Button::new(
-                            cx,
-                            move |cx| cx.emit(AppEvent::SelectSample(index)), // Add the event handler!
-                            |cx| Label::new(cx, &txt).cursor(CursorIcon::Hand),
-                        )
-                        .hoverable(true)
-                        .class("tab")
-                        .toggle_class(
-                            "selected",
-                            Data::selected_sample.map(move |selected| *selected == index),
-                        );
-                    }
-                })
-                .width(Stretch(1.0))
-                .height(Auto);
-
-                // Only the parameter panels should be inside the binding
-                Binding::new(cx, Data::selected_sample, |cx, selected_idx| {
-                    let index = selected_idx.get(cx);
-
-                    // Wrap all three HStacks in a VStack with a constrained height
-                    VStack::new(cx, |cx| {
-                        // First panel row - equal height
-                        HStack::new(cx, |cx| {
-                            widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
-                                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
-                                    &get_param(st, index).semitone_offset
-                                });
-                                widgets::ParamSwitch::new(cx, Data::states, move |st| {
-                                    &get_param(st, index).is_tonal
-                                });
-                                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
-                                    &get_param(st, index).root_note
-                                })
-                                .class("root-note-select")
-                                .disabled(
-                                    Data::states.map(move |st| {
-                                        get_param(st, index).is_tonal.value() == false
-                                    }),
-                                );
-                            })
-                            .width(Stretch(0.3));
-                            widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
-                                widgets::ParamRadio::vertical(
-                                    cx,
-                                    Data::states,
-                                    move |st| &get_param(st, index).pitch_shift_kind,
-                                    false,
-                                );
-                            })
-                            .width(Stretch(0.2));
-                            widgets::WidgetPanel::new(cx, "Blend Group", |cx| {
-                                widgets::ParamRadio::vertical(
-                                    cx,
-                                    Data::states,
-                                    move |st| &get_param(st, index).blend_group,
-                                    false,
-                                );
-                            })
-                            .width(Stretch(0.2));
-                            widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &st.params.blend_time
-                                });
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &st.params.blend_transition
-                                });
-                            })
-                            .width(Stretch(0.3));
-                        })
-                        .col_between(Units::Pixels(PANEL_SPACING))
-                        .height(Stretch(1.0)); // Equal height distribution
-
-                        // Second panel row - equal height
-                        HStack::new(cx, |cx| {
-                            widgets::WidgetPanel::new(cx, "ADSR", |cx| {
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &get_param(st, index).attack
-                                });
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &get_param(st, index).decay
-                                });
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &get_param(st, index).sustain
-                                });
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &get_param(st, index).release
-                                });
-                            })
-                            .width(Stretch(0.5));
-                            widgets::WidgetPanel::new(cx, "Time Control", |cx| {
-                                widgets::ParamKnob::new(
-                                    cx,
-                                    Data::states,
-                                    move |st| &get_param(st, index).start_offset,
-                                    true,
-                                );
-                            })
-                            .width(Stretch(0.25));
-                            widgets::WidgetPanel::new(cx, "Gain", |cx| {
-                                widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                                    &get_param(st, index).gain
-                                });
-                            })
-                            .width(Stretch(0.25));
-                        })
-                        .col_between(Units::Pixels(PANEL_SPACING))
-                        .height(Stretch(1.0)); // Equal height distribution
-
-                        // Third panel row - equal height
-                        VStack::new(cx, |cx| {
-                            // Get the lens of current file
-                            let file_path = Data::states.map(move |st| {
-                                get_param(st, index)
-                                    .sample_path
-                                    .read()
-                                    .ok()
-                                    .and_then(|guard| {
-                                        guard
-                                            .as_ref()
-                                            .and_then(|path| path.to_str().map(String::from))
-                                    })
-                            });
-                            let file_name = Data::states.map(move |st| {
-                                get_param(st, index)
-                                    .sample_path
-                                    .read()
-                                    .ok()
-                                    .and_then(|guard| {
-                                        guard.as_ref().and_then(|path| {
-                                            path.file_name()
-                                                .and_then(|name| name.to_str())
-                                                .map(String::from)
-                                        })
-                                    })
-                            });
-
-                            // The bar for selecting sample ... etc
-                            HStack::new(cx, |cx| {
-                                // Button for mute / unmute
-                                widgets::ParamSwitch::new(cx, Data::states, move |st| {
-                                    &get_param(st, index).muted
-                                })
-                                .width(Stretch(1.0));
-
-                                // Sample Name
-                                Label::new(
-                                    cx,
-                                    file_name.map(|v| {
-                                        v.clone().unwrap_or_else(|| "No sample loaded".into())
-                                    }),
-                                )
-                                .width(Stretch(1.0));
-
-                                // Btn group
-                                HStack::new(cx, |cx| {
-                                    let next_file = file_path.map(|path| {
-                                        path.clone()
-                                            .map(|path| {
-                                                utils::get_next_file_in_directory_wrap(&path)
-                                            })
-                                            .flatten()
-                                    });
-                                    let previous_file = file_path.map(|path| {
-                                        path.clone()
-                                            .map(|path| {
-                                                utils::get_previous_file_in_directory_wrap(&path)
-                                            })
-                                            .flatten()
-                                    });
-                                    Button::new(
-                                        cx,
-                                        move |cx| {
-                                            cx.spawn(move |proxy: &mut ContextProxy| {
-                                                let path_opt = rfd::FileDialog::new()
-                                                    .add_filter("audio", &["wav"])
-                                                    .pick_file();
-                                                if let Some(path) = path_opt {
-                                                    // We send a message > load audio
-                                                    let _ = proxy
-                                                        .emit(AppEvent::FileLoading(index, path));
-                                                }
-                                            });
-                                        },
-                                        |cx| Label::new(cx, "📂"),
-                                    );
-                                    Button::new(
-                                        cx,
-                                        move |cx| {
-                                            if let Some(path) = previous_file.get(cx) {
-                                                cx.emit(AppEvent::FileLoading(index, path));
-                                            }
-                                        },
-                                        |cx| Label::new(cx, "<"),
-                                    )
-                                    .disabled(previous_file.map(|v| v.is_none()));
-                                    Button::new(
-                                        cx,
-                                        move |cx| {
-                                            if let Some(path) = next_file.get(cx) {
-                                                cx.emit(AppEvent::FileLoading(index, path));
-                                            }
-                                        },
-                                        |cx| Label::new(cx, ">"),
-                                    )
-                                    .disabled(next_file.map(|v| v.is_none()));
-                                    Button::new(cx, |_| {}, |cx| Label::new(cx, "🗑️"));
-                                })
-                                .col_between(Pixels(2.0))
-                                .height(Auto)
-                                .child_left(Stretch(1.0))
-                                .width(Stretch(1.0));
-                            })
-                            .width(Stretch(1.0))
-                            .height(Auto)
-                            .class("widget-panel")
-                            .class("sample-info-strip");
-
-                            // Make a special length for the waveshape
-                            let binding_lens = Data::states.map(move |st| {
-                                let param = get_param(st, index);
-                                (
-                                    param.sample_path.read().ok().and_then(|guard| {
-                                        guard
-                                            .as_ref()
-                                            .and_then(|path| path.to_str().map(String::from))
-                                    }),
-                                    param.start_offset.value(),
-                                )
-                            });
-
-                            // Create a binding so the entire wave isn't always redrawn
-                            Binding::new(cx, binding_lens, move |cx, new_value| {
-                                // The display for waves
-                                VStack::new(cx, |cx| {
-                                    let buffer = Data::states.get(cx).get_buffer_copy(index);
-                                    if let Some(data) = buffer {
-                                        ZStack::new(cx, |cx| {
-                                            // background canvas
-                                            Grid::new(
-                                                cx,
-                                                ValueScaling::Linear,
-                                                (-1., 1.),
-                                                vec![0.],
-                                                Orientation::Horizontal,
-                                            );
-
-                                            // Waveform canvas
-                                            // TODO
-                                            // DO something better here!
-                                            let num_channel = data.spec.channels as usize;
-                                            let final_data =
-                                                data.data.into_iter().step_by(num_channel);
-                                            let silent = 44100. * new_value.get(cx).1;
-                                            let silent_vec = vec![0.; silent as usize];
-                                            widgets::Waveform::new(
-                                                cx,
-                                                silent_vec.into_iter().chain(final_data).collect(),
-                                            )
-                                            .outline_width(Pixels(1.0));
-
-                                            // Position canvas
-
-                                            // Something else ...
-                                        });
-                                    }
-                                })
-                                .class("waveform-vizualizer")
-                                .height(Stretch(1.0));
-                            });
-                        })
-                        .row_between(Units::Pixels(PANEL_SPACING))
-                        .height(Stretch(2.0));
-                    })
-                    .row_between(Units::Pixels(PANEL_SPACING))
-                    .height(Stretch(1.0)); // This VStack should take remaining space
-                });
+                create_title_section(cx);
+                create_sample_tabs(cx);
+                create_parameter_panels(cx);
             })
             .child_space(Units::Pixels(MAIN_PADDING))
             .background_color(BACKGROUND_COLOR);
