@@ -12,6 +12,11 @@ button.selected {
     background-color: grey;
 }
 
+.sample-info-strip,
+.waveform-vizualizer {
+    background-color: #221100;
+}
+
 .widget-panel {
     border: 1px solid #404040;
     child-space: 8px;

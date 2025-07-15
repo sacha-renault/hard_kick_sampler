@@ -3,8 +3,9 @@ pub mod knob;
 pub mod panel;
 pub mod radio;
 pub mod toggle;
+pub mod waveform;
 
 pub use {
     drag_to_change::ParamDragNumber, knob::ParamKnob, panel::WidgetPanel, radio::ParamRadio,
-    toggle::ParamSwitch,
+    toggle::ParamSwitch, waveform::Waveform,
 };

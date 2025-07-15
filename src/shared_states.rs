@@ -19,3 +19,15 @@ pub struct SharedStates {
     /// The tempo of the host
     pub host_bpm: Arc<AtomicF32>,
 }
+
+impl SharedStates {
+    pub fn get_buffer_copy(&self, index: usize) -> Option<Vec<f32>> {
+        self.shared_buffer[index]
+            .read()
+            .ok()?
+            .as_ref()?
+            .data
+            .clone()
+            .into()
+    }
+}

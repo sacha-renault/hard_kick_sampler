@@ -4,18 +4,17 @@ mod widgets;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use cyma::prelude::*;
 use nih_plug::prelude::*;
-use nih_plug_vizia::vizia::binding::Map;
 use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
 // use crate::editor::waveform::WavePlot;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
-use crate::plugin::{HardKickSampler, DEFAULT_BPM};
+use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
-use crate::tasks::{AudioData, TaskRequests, TaskResults};
+use crate::tasks::TaskRequests;
 use crate::utils;
 use style::*;
 
@@ -315,14 +314,46 @@ pub fn create_editor(
                             .width(Stretch(1.0))
                             .height(Auto)
                             .class("widget-panel")
-                            .bottom(Stretch(1.0))
-                            .top(Stretch(1.0));
+                            .class("sample-info-strip");
 
                             // The display for waves
-                            HStack::new(cx, |_| {}).height(Stretch(1.0));
+                            VStack::new(cx, |cx| {
+                                let buffer = Data::states.map(move |st| st.get_buffer_copy(index));
+                                if let Some(data) = buffer.get(cx) {
+                                    ZStack::new(cx, |cx| {
+                                        // background canvas
+                                        Grid::new(
+                                            cx,
+                                            ValueScaling::Linear,
+                                            (-1., 1.),
+                                            vec![0.],
+                                            Orientation::Horizontal,
+                                        );
+
+                                        // Waveform canvas
+                                        widgets::Waveform::new(
+                                            cx,
+                                            buffer.map(|b| {
+                                                b.clone()
+                                                    .map(|data| {
+                                                        data.into_iter().step_by(2).collect()
+                                                    })
+                                                    .unwrap()
+                                            }),
+                                        )
+                                        .outline_width(Pixels(1.0));
+
+                                        // Position canvas
+
+                                        // Something else ...
+                                    });
+                                }
+                            })
+                            .class("waveform-vizualizer")
+                            .height(Stretch(1.0));
                         })
                         .row_between(Units::Pixels(PANEL_SPACING))
-                        .height(Stretch(1.0));
+                        .height(Stretch(2.0));
                     })
                     .row_between(Units::Pixels(PANEL_SPACING))
                     .height(Stretch(1.0)); // This VStack should take remaining space
