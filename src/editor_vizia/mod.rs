@@ -49,6 +49,8 @@ pub fn create_editor(
         move |cx, _| {
             cx.add_stylesheet(include_style!("src/editor_vizia/style.css"))
                 .expect("Coudln't load css file.");
+            cx.add_stylesheet(include_style!("src/editor_vizia/theme.css"))
+                .expect("Coudln't load css file.");
 
             // Build data
             Data {
@@ -101,6 +103,7 @@ pub fn create_editor(
                                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
                                     &get_param(st, index).root_note
                                 })
+                                .width(Pixels(42.))
                                 .disabled(
                                     Data::states.map(move |st| {
                                         get_param(st, index).is_tonal.value() == false

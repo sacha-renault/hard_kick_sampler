@@ -39,7 +39,7 @@ impl ParamDragNumber {
                     current_value_lens
                         .map(move |val| param_data.param().normalized_value_to_string(*val, true)),
                 )
-                .class("drag-number-input")
+                .class("drag-input")
                 .on_double_click(|cx, _| cx.emit(ResetEvent))
                 .focusable(true);
             }),
