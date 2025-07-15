@@ -93,7 +93,14 @@ pub fn create_editor(
                         // First panel row - equal height
                         HStack::new(cx, |cx| {
                             widgets::WidgetPanel::new(cx, "Tonal", |cx| {});
-                            widgets::WidgetPanel::new(cx, "Blend Group", |cx| {});
+                            widgets::WidgetPanel::new(cx, "Blend Group", |cx| {
+                                widgets::ParamRadio::vertical(
+                                    cx,
+                                    Data::states,
+                                    move |st| &get_param(st, index).blend_group,
+                                    false,
+                                );
+                            });
                             widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
                                 widgets::ParamKnob::new(cx, Data::states, move |st| {
                                     &st.params.blend_time
