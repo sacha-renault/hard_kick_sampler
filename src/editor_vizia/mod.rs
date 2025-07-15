@@ -1,10 +1,14 @@
 mod style;
 mod widgets;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use nih_plug::prelude::*;
+use nih_plug_vizia::vizia::binding::Map;
 use nih_plug_vizia::vizia::prelude::*;
+use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
+use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
 // use crate::editor::waveform::WavePlot;
@@ -17,19 +21,44 @@ use style::*;
 
 pub enum AppEvent {
     SelectSample(usize),
+    FileLoading(usize, PathBuf),
 }
 
 #[derive(Lens)]
 pub struct Data {
     states: Arc<SharedStates>,
     selected_sample: usize,
+    executor: AsyncExecutor<HardKickSampler>,
 }
 
 impl Model for Data {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|app_event, _| match app_event {
             AppEvent::SelectSample(index) => {
                 self.selected_sample = *index;
+            }
+            AppEvent::FileLoading(index, path) => {
+                self.executor
+                    .execute_background(TaskRequests::LoadFile(*index, path.clone()));
+
+                // Check if the sample is tonal
+                // We also check the current value of the root note to set it
+                let root = match utils::get_root_note_from_filename(
+                    path.file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("")
+                        .into(),
+                ) {
+                    Some(root) => root,
+                    _ => 0,
+                };
+                // Get the param
+                let param = &get_param(&self.states, self.selected_sample).root_note;
+                let ptr = param.as_ptr();
+                let normalized = param.preview_normalized(root);
+                cx.emit(RawParamEvent::BeginSetParameter(ptr));
+                cx.emit(RawParamEvent::SetParameterNormalized(ptr, normalized));
+                cx.emit(RawParamEvent::EndSetParameter(ptr));
             }
         });
     }
@@ -41,7 +70,7 @@ pub fn get_param(st: &Arc<SharedStates>, index: usize) -> &SamplePlayerParams {
 
 pub fn create_editor(
     states: Arc<SharedStates>,
-    _async_executor: AsyncExecutor<HardKickSampler>,
+    async_executor: AsyncExecutor<HardKickSampler>,
 ) -> Option<Box<dyn Editor>> {
     create_vizia_editor(
         ViziaState::new(|| (801, 600)),
@@ -56,6 +85,7 @@ pub fn create_editor(
             Data {
                 states: states.clone(),
                 selected_sample: 0,
+                executor: async_executor.clone(),
             }
             .build(cx);
 
@@ -180,6 +210,32 @@ pub fn create_editor(
 
                         // Third panel row - equal height
                         VStack::new(cx, |cx| {
+                            // Get the lens of current file
+                            let file_path = Data::states.map(move |st| {
+                                get_param(st, index)
+                                    .sample_path
+                                    .read()
+                                    .ok()
+                                    .and_then(|guard| {
+                                        guard
+                                            .as_ref()
+                                            .and_then(|path| path.to_str().map(String::from))
+                                    })
+                            });
+                            let file_name = Data::states.map(move |st| {
+                                get_param(st, index)
+                                    .sample_path
+                                    .read()
+                                    .ok()
+                                    .and_then(|guard| {
+                                        guard.as_ref().and_then(|path| {
+                                            path.file_name()
+                                                .and_then(|name| name.to_str())
+                                                .map(String::from)
+                                        })
+                                    })
+                            });
+
                             // The bar for selecting sample ... etc
                             HStack::new(cx, |cx| {
                                 // Button for mute / unmute
@@ -191,28 +247,64 @@ pub fn create_editor(
                                 // Sample Name
                                 Label::new(
                                     cx,
-                                    Data::states.map(move |st| {
-                                        get_param(st, index)
-                                            .sample_path
-                                            .read()
-                                            .ok()
-                                            .and_then(|guard| {
-                                                guard.as_ref().and_then(|path| {
-                                                    path.file_name()
-                                                        .and_then(|name| name.to_str())
-                                                        .map(String::from)
-                                                })
-                                            })
-                                            .unwrap_or_else(|| "No sample loaded".to_string())
+                                    file_name.map(|v| {
+                                        v.clone().unwrap_or_else(|| "No sample loaded".into())
                                     }),
                                 )
                                 .width(Stretch(1.0));
 
                                 // Btn group
                                 HStack::new(cx, |cx| {
-                                    Button::new(cx, |_| {}, |cx| Label::new(cx, "📂"));
-                                    Button::new(cx, |_| {}, |cx| Label::new(cx, "<"));
-                                    Button::new(cx, |_| {}, |cx| Label::new(cx, ">"));
+                                    let next_file = file_path.map(|path| {
+                                        path.clone()
+                                            .map(|path| {
+                                                utils::get_next_file_in_directory_wrap(&path)
+                                            })
+                                            .flatten()
+                                    });
+                                    let previous_file = file_path.map(|path| {
+                                        path.clone()
+                                            .map(|path| {
+                                                utils::get_previous_file_in_directory_wrap(&path)
+                                            })
+                                            .flatten()
+                                    });
+                                    Button::new(
+                                        cx,
+                                        move |cx| {
+                                            cx.spawn(move |proxy: &mut ContextProxy| {
+                                                let path_opt = rfd::FileDialog::new()
+                                                    .add_filter("audio", &["wav"])
+                                                    .pick_file();
+                                                if let Some(path) = path_opt {
+                                                    // We send a message > load audio
+                                                    let _ = proxy
+                                                        .emit(AppEvent::FileLoading(index, path));
+                                                }
+                                            });
+                                        },
+                                        |cx| Label::new(cx, "📂"),
+                                    );
+                                    Button::new(
+                                        cx,
+                                        move |cx| {
+                                            if let Some(path) = previous_file.get(cx) {
+                                                cx.emit(AppEvent::FileLoading(index, path));
+                                            }
+                                        },
+                                        |cx| Label::new(cx, "<"),
+                                    )
+                                    .disabled(previous_file.map(|v| v.is_none()));
+                                    Button::new(
+                                        cx,
+                                        move |cx| {
+                                            if let Some(path) = next_file.get(cx) {
+                                                cx.emit(AppEvent::FileLoading(index, path));
+                                            }
+                                        },
+                                        |cx| Label::new(cx, ">"),
+                                    )
+                                    .disabled(next_file.map(|v| v.is_none()));
                                     Button::new(cx, |_| {}, |cx| Label::new(cx, "🗑️"));
                                 })
                                 .col_between(Pixels(2.0))
