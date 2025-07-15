@@ -92,7 +92,16 @@ pub fn create_editor(
                     VStack::new(cx, |cx| {
                         // First panel row - equal height
                         HStack::new(cx, |cx| {
-                            widgets::WidgetPanel::new(cx, "Tonal", |cx| {});
+                            widgets::WidgetPanel::new(cx, "Tonal", |cx| {}).width(Stretch(0.3));
+                            widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
+                                widgets::ParamRadio::vertical(
+                                    cx,
+                                    Data::states,
+                                    move |st| &get_param(st, index).pitch_shift_kind,
+                                    false,
+                                );
+                            })
+                            .width(Stretch(0.2));
                             widgets::WidgetPanel::new(cx, "Blend Group", |cx| {
                                 widgets::ParamRadio::vertical(
                                     cx,
@@ -100,7 +109,8 @@ pub fn create_editor(
                                     move |st| &get_param(st, index).blend_group,
                                     false,
                                 );
-                            });
+                            })
+                            .width(Stretch(0.2));
                             widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
                                 widgets::ParamKnob::new(cx, Data::states, move |st| {
                                     &st.params.blend_time
@@ -108,7 +118,8 @@ pub fn create_editor(
                                 widgets::ParamKnob::new(cx, Data::states, move |st| {
                                     &st.params.blend_transition
                                 });
-                            });
+                            })
+                            .width(Stretch(0.3));
                         })
                         .col_between(Units::Pixels(PANEL_SPACING))
                         .height(Stretch(1.0)); // Equal height distribution
