@@ -6,5 +6,5 @@ pub mod toggle;
 
 pub use {
     drag_to_change::ParamDragNumber, knob::ParamKnob, panel::WidgetPanel, radio::ParamRadio,
-    toggle::ParamToggle,
+    toggle::ParamSwitch,
 };

@@ -33,8 +33,6 @@ impl WidgetPanel {
             // Content area
             VStack::new(cx, content).class("panel-content");
         })
-        .child_space(Units::Pixels(PANEL_PADDING))
-        .border_radius(Units::Pixels(BORDER_RADIUS))
         .class("widget-panel")
     }
 }

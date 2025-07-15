@@ -3,11 +3,11 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 
 #[derive(Lens)]
-pub struct ParamToggle {
+pub struct ParamSwitch {
     param_base: ParamWidgetBase,
 }
 
-impl ParamToggle {
+impl ParamSwitch {
     pub fn new<L, Params, P, FMap>(
         cx: &mut Context,
         params: L,
@@ -60,7 +60,7 @@ impl ParamToggle {
 
 struct ToggleChangeEvent;
 
-impl View for ParamToggle {
+impl View for ParamSwitch {
     fn element(&self) -> Option<&'static str> {
         Some("param-toggle")
     }

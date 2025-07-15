@@ -97,7 +97,7 @@ pub fn create_editor(
                                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
                                     &get_param(st, index).semitone_offset
                                 });
-                                widgets::ParamToggle::new(cx, Data::states, move |st| {
+                                widgets::ParamSwitch::new(cx, Data::states, move |st| {
                                     &get_param(st, index).is_tonal
                                 });
                                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
@@ -179,10 +179,58 @@ pub fn create_editor(
                         .height(Stretch(1.0)); // Equal height distribution
 
                         // Third panel row - equal height
-                        HStack::new(cx, |cx| {
-                            // Add your third row content here
+                        VStack::new(cx, |cx| {
+                            // The bar for selecting sample ... etc
+                            HStack::new(cx, |cx| {
+                                // Button for mute / unmute
+                                widgets::ParamSwitch::new(cx, Data::states, move |st| {
+                                    &get_param(st, index).muted
+                                })
+                                .width(Stretch(1.0));
+
+                                // Sample Name
+                                Label::new(
+                                    cx,
+                                    Data::states.map(move |st| {
+                                        get_param(st, index)
+                                            .sample_path
+                                            .read()
+                                            .ok()
+                                            .and_then(|guard| {
+                                                guard.as_ref().and_then(|path| {
+                                                    path.file_name()
+                                                        .and_then(|name| name.to_str())
+                                                        .map(String::from)
+                                                })
+                                            })
+                                            .unwrap_or_else(|| "No sample loaded".to_string())
+                                    }),
+                                )
+                                .width(Stretch(1.0));
+
+                                // Btn group
+                                HStack::new(cx, |cx| {
+                                    Button::new(cx, |_| {}, |cx| Label::new(cx, "📂"));
+                                    Button::new(cx, |_| {}, |cx| Label::new(cx, "<"));
+                                    Button::new(cx, |_| {}, |cx| Label::new(cx, ">"));
+                                    Button::new(cx, |_| {}, |cx| Label::new(cx, "🗑️"));
+                                })
+                                .col_between(Pixels(2.0))
+                                .height(Auto)
+                                .child_left(Stretch(1.0))
+                                .width(Stretch(1.0));
+                            })
+                            .width(Stretch(1.0))
+                            .height(Auto)
+                            .class("widget-panel")
+                            .bottom(Stretch(1.0))
+                            .top(Stretch(1.0));
+
+                            // The display for waves
+                            HStack::new(cx, |_| {}).height(Stretch(1.0));
                         })
-                        .height(Stretch(1.0)); // Equal height distribution
+                        .row_between(Units::Pixels(PANEL_SPACING))
+                        .height(Stretch(1.0));
                     })
                     .row_between(Units::Pixels(PANEL_SPACING))
                     .height(Stretch(1.0)); // This VStack should take remaining space

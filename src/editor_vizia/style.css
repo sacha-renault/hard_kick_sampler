@@ -14,6 +14,8 @@ button.selected {
 
 .widget-panel {
     border: 1px solid #404040;
+    child-space: 8px;
+    border-radius: 10.0px;
 }
 
 .widget-panel .panel-title {
