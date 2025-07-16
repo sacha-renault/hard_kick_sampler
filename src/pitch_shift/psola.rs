@@ -59,10 +59,7 @@ impl PsolaShifter {
                 .map(|_| AlternatingHann::new(source_wavelength))
                 .collect();
 
-            let mut analysis = hanns
-                .iter()
-                .map(|hann| TdpsolaAnalysis::new(hann))
-                .collect::<Vec<_>>();
+            let mut analysis = hanns.iter().map(TdpsolaAnalysis::new).collect::<Vec<_>>();
 
             for (channel, (analys, hann)) in analysis.iter_mut().zip(hanns.iter_mut()).enumerate() {
                 for sample in sample_buffer.iter().skip(channel).step_by(channel_number) {
@@ -146,6 +143,6 @@ impl PitchShifter for PsolaShifter {
     }
 
     fn kind(&self) -> PitchShiftKind {
-        PitchShiftKind::PSOLA
+        PitchShiftKind::Psola
     }
 }

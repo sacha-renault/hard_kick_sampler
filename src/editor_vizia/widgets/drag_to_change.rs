@@ -23,7 +23,7 @@ impl ParamDragNumber {
         FMap: Fn(&Params) -> &P + Copy + 'static,
     {
         Self {
-            param_base: ParamWidgetBase::new(cx, params.clone(), params_to_param),
+            param_base: ParamWidgetBase::new(cx, params, params_to_param),
             drag_start_y: 0.0,
             drag_start_value: 0.0,
             is_dragging: false,

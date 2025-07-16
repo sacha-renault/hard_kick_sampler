@@ -20,7 +20,7 @@ impl ParamSwitch {
         FMap: Fn(&Params) -> &P + Copy + 'static,
     {
         Self {
-            param_base: ParamWidgetBase::new(cx, params.clone(), params_to_param),
+            param_base: ParamWidgetBase::new(cx, params, params_to_param),
         }
         .build(
             cx,

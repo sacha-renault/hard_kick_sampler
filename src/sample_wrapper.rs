@@ -405,13 +405,13 @@ impl SamplePlayer {
             if let Some(buffer) = self.buffer.as_ref() {
                 self.pitch_shifter = match self.get_params().pitch_shift_kind.value() {
                     PitchShiftKind::Classic => Box::new(ClassicShifter::new()),
-                    PitchShiftKind::PSOLA => Box::new(PsolaShifter::new()),
+                    PitchShiftKind::Psola => Box::new(PsolaShifter::new()),
                 };
                 self.pitch_shifter
                     .load_sample(buffer, self.sample_channels, self.sample_rate);
 
                 // If there is a note running, we can trigger!
-                if let Some(_) = self.midi_note.as_ref() {
+                if self.midi_note.is_some() {
                     let playback_rate = self.get_playback_rate();
                     let sr_correction = self.get_sr_correction();
                     self.pitch_shifter.trigger(sr_correction, playback_rate);

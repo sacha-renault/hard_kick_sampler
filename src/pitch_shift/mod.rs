@@ -6,7 +6,7 @@ use nih_plug::prelude::Enum;
 #[derive(Debug, PartialEq, Enum)]
 pub enum PitchShiftKind {
     Classic,
-    PSOLA,
+    Psola,
 }
 
 pub trait PitchShifter {

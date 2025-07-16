@@ -45,15 +45,13 @@ impl Model for Data {
 
                 // Check if the sample is tonal
                 // We also check the current value of the root note to set it
-                let root = match utils::get_root_note_from_filename(
+                let root = utils::get_root_note_from_filename(
                     path.file_name()
                         .and_then(|name| name.to_str())
                         .unwrap_or("")
                         .into(),
-                ) {
-                    Some(root) => root,
-                    _ => 0,
-                };
+                )
+                .unwrap_or_default();
                 // Get the param
                 let param = &get_param(&self.states, self.selected_sample).root_note;
                 let ptr = param.as_ptr();
@@ -116,9 +114,7 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
                     &get_param(st, index).root_note
                 })
                 .class("root-note-select")
-                .disabled(
-                    Data::states.map(move |st| get_param(st, index).is_tonal.value() == false),
-                );
+                .disabled(Data::states.map(move |st| !get_param(st, index).is_tonal.value()));
                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
                     &get_param(st, index).semitone_offset
                 });
@@ -254,13 +250,11 @@ fn create_button_group(
     HStack::new(cx, |cx| {
         let next_file = file_path.map(|path| {
             path.clone()
-                .map(|path| utils::get_next_file_in_directory_wrap(&path))
-                .flatten()
+                .and_then(|path| utils::get_next_file_in_directory_wrap(&path))
         });
         let previous_file = file_path.map(|path| {
             path.clone()
-                .map(|path| utils::get_previous_file_in_directory_wrap(&path))
-                .flatten()
+                .and_then(|path| utils::get_previous_file_in_directory_wrap(&path))
         });
         Button::new(
             cx,

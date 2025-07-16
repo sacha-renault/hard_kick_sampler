@@ -6,6 +6,7 @@ pub struct WidgetPanel;
 
 impl WidgetPanel {
     /// Creates a new widget panel with a title and content
+    #[allow(clippy::new_ret_no_self)]
     pub fn new<'a, F>(cx: &'a mut Context, title: &str, content: F) -> Handle<'a, VStack>
     where
         F: FnOnce(&mut Context),
