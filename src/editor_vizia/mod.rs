@@ -3,6 +3,7 @@ mod style;
 mod widgets;
 
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use cyma::prelude::*;
@@ -327,15 +328,27 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         Orientation::Horizontal,
                     );
 
+                    // First, we have to know how many frame we wanna display
+                    let bpm = Data::states.get(cx).host_bpm.load(Ordering::Relaxed);
+                    let sr = audio_data.spec.sample_rate as f32;
+                    let num_frames = (1.5 * 4.0 * 60.0 * sr / bpm) as usize;
+                    let (_, start_offset) = new_value.get(cx);
+
                     // Waveform canvas
                     // TODO
                     // DO something better here!
                     let num_channel = audio_data.spec.channels as usize;
-                    let final_data = audio_data.data.into_iter().step_by(num_channel);
-                    let silent = 44100. * new_value.get(cx).1;
-                    let silent_vec = vec![0.; silent as usize];
-                    widgets::Waveform::new(cx, silent_vec.into_iter().chain(final_data).collect())
-                        .outline_width(Pixels(1.0));
+                    let final_data = audio_data
+                        .data
+                        .into_iter()
+                        .step_by(num_channel)
+                        .take(num_frames)
+                        .collect();
+                    let num_silent_frames = (sr * start_offset) as usize;
+                    let silent_vec = vec![0.; num_silent_frames];
+                    let final_data = [silent_vec, final_data].concat();
+
+                    widgets::Waveform::new(cx, final_data).outline_width(Pixels(1.0));
 
                     // Position canvas
 
