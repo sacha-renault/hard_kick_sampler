@@ -135,7 +135,7 @@ impl SamplePlayer {
             // Trigger the adsr
             self.adsr.note_on();
 
-            // For psola
+            // Trigger the shifters
             let playback_rate = self.get_playback_rate();
             let sr_correction = self.get_sr_correction();
             self.pitch_shifter.trigger(sr_correction, playback_rate);
@@ -409,6 +409,13 @@ impl SamplePlayer {
                 };
                 self.pitch_shifter
                     .load_sample(buffer, self.sample_channels, self.sample_rate);
+
+                // If there is a note running, we can trigger!
+                if let Some(_) = self.midi_note.as_ref() {
+                    let playback_rate = self.get_playback_rate();
+                    let sr_correction = self.get_sr_correction();
+                    self.pitch_shifter.trigger(sr_correction, playback_rate);
+                }
             }
         }
 
@@ -436,12 +443,11 @@ impl SamplePlayer {
         let current_time = process_count / self.host_sample_rate;
         let blend_gain = utils::get_blend_value(group, current_time, blend_time, blend_transition);
 
-        for (count, frame) in buffer
+        for (position, frame) in buffer
             .iter_samples()
             .enumerate()
             .map(|(i, sample)| (i as f32 + process_count, sample))
         {
-            let position = count * sr_correction;
             if let Some(data) = self.pitch_shifter.get_frame(position) {
                 // Get the adrs value
                 let adrs_envelope = self.adsr.next_value(attack, decay, sustain, release, true);

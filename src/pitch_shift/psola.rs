@@ -14,6 +14,8 @@ pub struct PsolaShifter {
     iter_samples: Option<Vec<Vec<f32>>>,
     source_length: f32,
     is_loaded: bool,
+    sr_correction: f32,
+    playback_rate: f32,
 }
 
 impl PsolaShifter {
@@ -25,6 +27,8 @@ impl PsolaShifter {
             iter_samples: None,
             source_length: 0.0,
             is_loaded: false,
+            sr_correction: 1.0,
+            playback_rate: 1.0,
         }
     }
 
@@ -101,6 +105,9 @@ impl PitchShifter for PsolaShifter {
             return;
         }
 
+        self.playback_rate = playback_rate;
+        self.sr_correction = sr_correction;
+
         // Create NEW synthesis objects each time - analysis stays intact!
         let mut synthesis: Vec<TdpsolaSynthesis> = (0..self._hanns.len())
             .map(|_| {
@@ -130,7 +137,11 @@ impl PitchShifter for PsolaShifter {
         self.iter_samples
             .as_ref()?
             .iter()
-            .map(|channels| channels.get(position as usize).copied())
+            .map(|channels| {
+                channels
+                    .get((position * self.sr_correction) as usize)
+                    .copied()
+            })
             .collect()
     }
 
