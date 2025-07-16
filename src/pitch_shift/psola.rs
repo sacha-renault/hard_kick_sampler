@@ -145,4 +145,8 @@ impl PitchShifter for PsolaShifter {
     fn kind(&self) -> PitchShiftKind {
         PitchShiftKind::Psola
     }
+
+    fn get_position(&self, position: f32) -> f32 {
+        self.sr_correction * position
+    }
 }

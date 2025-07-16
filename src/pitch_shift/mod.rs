@@ -138,4 +138,8 @@ pub trait PitchShifter {
 
     /// Returns the type/algorithm used by this pitch shifter.
     fn kind(&self) -> PitchShiftKind;
+
+    /// Return the position in frame number of the pitch shifter
+    /// since sample started to play
+    fn get_position(&self, position: f32) -> f32;
 }

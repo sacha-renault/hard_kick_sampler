@@ -472,12 +472,7 @@ impl SamplePlayer {
             return;
         }
 
-        // Else we can store a value
-        let raw_playback_position = process_count * self.get_sr_correction();
-        let position = match self.get_params().pitch_shift_kind.value() {
-            PitchShiftKind::Classic => self.get_playback_rate() * raw_playback_position,
-            _ => raw_playback_position, // All algo that doesn't stretch audio length
-        };
+        let position = self.pitch_shifter.get_position(process_count);
         self.shared_playback_position
             .store(position as u64, Ordering::Relaxed);
     }

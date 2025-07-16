@@ -99,4 +99,8 @@ impl PitchShifter for ClassicShifter {
     fn kind(&self) -> PitchShiftKind {
         PitchShiftKind::Classic
     }
+
+    fn get_position(&self, position: f32) -> f32 {
+        self.sr_correction * position * self.playback_rate
+    }
 }
