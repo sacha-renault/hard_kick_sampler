@@ -7,8 +7,9 @@ use nih_plug::nih_error;
 
 use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
+use crate::pitch_shift::classic::ClassicShifter;
 use crate::pitch_shift::psola::PsolaShifter;
-use crate::pitch_shift::PitchShiftKind;
+use crate::pitch_shift::{PitchShiftKind, PitchShifter};
 use crate::tasks::AudioData;
 use crate::utils;
 
@@ -58,7 +59,7 @@ pub struct SamplePlayer {
     adsr: MultiChannelAdsr,
 
     /// For PSOLA
-    psola: Option<PsolaShifter>,
+    pitch_shifter: Box<dyn PitchShifter + Send>,
 
     // HERE ARE THE DATA THAT ARE SHARED WITH THE GUI
     /// A copy of the buffer that the GUI can access for display
@@ -95,7 +96,6 @@ impl SamplePlayer {
             index,
             params.samples.len()
         );
-
         Self {
             params,
             index,
@@ -106,7 +106,7 @@ impl SamplePlayer {
             host_channels: 0,
             sample_channels: 0,
             adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
-            psola: None,
+            pitch_shifter: Box::new(ClassicShifter::new()),
 
             // THINGS FOR GUI
             shared_buffer: Arc::new(RwLock::new(None)),
@@ -136,12 +136,9 @@ impl SamplePlayer {
             self.adsr.note_on();
 
             // For psola
-            let pitch_kind = self.get_params().pitch_shift_kind.value();
-            if matches!(pitch_kind, PitchShiftKind::PSOLA) {
-                let rate = self.get_playback_rate();
-                let sr_correct = self.get_sr_correction();
-                self.psola.as_mut().map(|p| p.trigger(sr_correct, rate));
-            }
+            let playback_rate = self.get_playback_rate();
+            let sr_correction = self.get_sr_correction();
+            self.pitch_shifter.trigger(sr_correction, playback_rate);
         }
     }
 
@@ -205,15 +202,6 @@ impl SamplePlayer {
     ///
     /// * `audio_data` - New audio data to set, or None to clear buffers
     fn update_buffers(&mut self, audio_data: Option<AudioData>) {
-        // Clear psola
-        self.psola = audio_data.as_ref().and_then(|data| {
-            PsolaShifter::build(
-                &data.data,
-                data.spec.channels as usize,
-                data.spec.sample_rate as usize,
-            )
-        });
-
         // Update internal buffer and metadata
         self.buffer = audio_data.as_ref().map(|data| data.data.clone());
         self.sample_channels = audio_data
@@ -223,7 +211,14 @@ impl SamplePlayer {
 
         // Update sample rate if we have audio data
         if let Some(data) = audio_data.as_ref() {
+            self.pitch_shifter.load_sample(
+                &data.data,
+                data.spec.channels as usize,
+                data.spec.sample_rate as f32,
+            );
             self.sample_rate = data.spec.sample_rate as f32;
+        } else {
+            self.pitch_shifter.clear_sample();
         }
 
         // Update shared buffer for GUI (non-critical operation)
@@ -340,27 +335,6 @@ impl SamplePlayer {
         2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE)
     }
 
-    /// Get the pitch-adjusted playback position for a specific audio channel.
-    ///
-    /// Applies the current playback rate to the raw playback position and calculates
-    /// the appropriate sample index for interleaved audio data.
-    ///
-    /// # Returns
-    ///
-    /// A tuple of (sample_index, fractional_part) where:
-    /// - `sample_index` is the integer sample position in the interleaved buffer
-    /// - `fractional_part` is the sub-sample position for interpolation (0.0 to 1.0)
-    #[inline]
-    pub fn get_playback_position(&self, process_count: f32, channel_index: usize) -> (usize, f32) {
-        utils::get_stretch_playback_position(
-            process_count,
-            self.get_sr_correction(),
-            self.get_playback_rate(),
-            self.sample_channels,
-            channel_index,
-        )
-    }
-
     /// Returns the sample rate correction factor.
     ///
     /// This accounts for differences between the sample's original sample rate
@@ -383,6 +357,9 @@ impl SamplePlayer {
 
         // Reset ADSR envelope
         self.adsr.reset();
+
+        // clear pitch_shifter
+        self.pitch_shifter.clear_sample();
     }
 
     /// Resets the playback state without clearing the loaded sample.
@@ -416,139 +393,29 @@ impl SamplePlayer {
         self.adsr.is_idling() || self.is_muted() || self.buffer.is_none()
     }
 
-    #[inline]
-    pub fn get_buffer_if_not_silent(&self) -> Option<&Vec<f32>> {
-        if self.is_silent() {
-            None
-        } else {
-            self.buffer.as_ref()
-        }
-    }
-
-    /// Generates the next audio sample for the specified channel.
-    ///
-    /// This is the main audio processing method that should be called once per channel
-    /// per audio frame. It handles sample interpolation, ADSR envelope application,
-    /// and parameter smoothing.
-    ///
-    /// # Arguments
-    ///
-    /// * `process_count` - The number of frames processed by the plugin from the start of the note
-    ///    this value must be corrected if sr of the sample != from the sample of the host.
-    /// * `channel_index` - Which channel to generate (0 for left, 1 for right, etc.)
-    ///
-    /// # Returns
-    ///
-    /// The audio sample value for this channel, or 0.0 if:
-    /// - The sample is muted
-    /// - No sample is loaded
-    /// - The ADSR envelope is idle
-    /// - Playback has reached the end of the sample
-    ///
-    /// # Performance Notes
-    ///
-    /// - Parameter loading and playback position updates only occur on channel 0
-    /// - This prevents parameter drift and maintains channel synchronization
-    /// - Uses linear interpolation for smooth playback at non-integer positions
-    #[inline]
-    pub fn next(&mut self, process_count: f32, channel_index: usize) -> f32 {
-        // Check if we should play first
-        let buffer = match self.get_buffer_if_not_silent() {
-            Some(buffer) => buffer,
-            None => return 0.0,
-        };
-
-        // check if it's the first channel of the frame
-        // to be processed
-        let is_first_channel = channel_index == 0;
-
-        // Cache the params
-        let params = self.get_params();
-
-        // Get the sample_index
-        let (sample_index, fraction) = self.get_playback_position(process_count, channel_index);
-        let offset = -params.start_offset.value() * self.sample_rate * self.sample_channels as f32;
-
-        // Depending on offset, we add or sub
-        let final_sample_index = if offset > 0. {
-            match utils::clipping_sub(sample_index, offset as usize) {
-                Some(v) => v,
-                None => return 0.,
-            }
-        } else {
-            (sample_index as f32 - offset) as usize
-        };
-
-        // Get current and next frame
-        let current_frame = buffer.get(final_sample_index);
-        let next_frame = buffer.get(final_sample_index + self.host_channels);
-
-        // depending on the availability of current and next frame, we apply different processing
-        let sample_value = match (current_frame, next_frame) {
-            // Case were current value and next value are both defined
-            // We can interpolate
-            (Some(value), Some(value_next)) => utils::interpolate(*value, *value_next, fraction),
-
-            // Current value is define but next is out of range
-            (Some(value), None) => *value,
-
-            // Nothing defined, we reset note + adsr
-            _ => {
-                // Case we are out of bounds
-                self.midi_note = None;
-                self.adsr.reset();
-                return 0.0;
-            }
-        };
-
-        // Load parameter
-        let gain = utils::load_smooth_param(&params.gain.smoothed, is_first_channel);
-
-        // We don't want those param to be any smoothed!
-        let attack = params.attack.value();
-        let decay = params.decay.value();
-        let sustain = params.sustain.value();
-        let release = params.release.value();
-
-        // Get the blend value
-        let group = params.blend_group.value();
-        let blend_time = self.params.blend_time.value();
-        let blend_transition = self.params.blend_transition.value();
-        let current_time = process_count / self.host_sample_rate;
-        let blend_gain = utils::get_blend_value(group, current_time, blend_time, blend_transition);
-
-        // Get the adrs value
-        let adrs_envelope = self
-            .adsr
-            .next_value(attack, decay, sustain, release, is_first_channel);
-
-        sample_value * gain * adrs_envelope * blend_gain
-    }
-
     pub fn process(&mut self, buffer: &mut Buffer, process_count: f32) {
         if self.is_silent() {
             return;
         }
 
-        match self.get_params().pitch_shift_kind.value() {
-            PitchShiftKind::Classic => self.process_classic(buffer, process_count),
-            PitchShiftKind::PSOLA => self.process_psola(buffer, process_count),
-        }
-    }
+        let desired_kind = self.get_params().pitch_shift_kind.value();
+        let current_kind = self.pitch_shifter.kind();
 
-    fn process_classic(&mut self, buffer: &mut Buffer, process_count: f32) {
-        for (count, frame) in buffer
-            .iter_samples()
-            .enumerate()
-            .map(|(i, sample)| (i as f32 + process_count, sample))
-        {
-            for (channel_index, sample) in frame.into_iter().enumerate() {
-                *sample += self.next(count, channel_index);
+        if current_kind != desired_kind || !self.pitch_shifter.ready() {
+            if let Some(buffer) = self.buffer.as_ref() {
+                self.pitch_shifter = match self.get_params().pitch_shift_kind.value() {
+                    PitchShiftKind::Classic => Box::new(ClassicShifter::new()),
+                    PitchShiftKind::PSOLA => Box::new(PsolaShifter::new()),
+                };
+                self.pitch_shifter
+                    .load_sample(buffer, self.sample_channels, self.sample_rate);
             }
         }
+
+        self.process_buffer(buffer, process_count)
     }
 
-    fn process_psola(&mut self, buffer: &mut Buffer, process_count: f32) {
+    fn process_buffer(&mut self, buffer: &mut Buffer, process_count: f32) {
         let params = self.get_params();
 
         // Get the sr correction
@@ -569,18 +436,13 @@ impl SamplePlayer {
         let current_time = process_count / self.host_sample_rate;
         let blend_gain = utils::get_blend_value(group, current_time, blend_time, blend_transition);
 
-        let psola = match &mut self.psola {
-            Some(p) => p,
-            _ => return,
-        };
-
         for (count, frame) in buffer
             .iter_samples()
             .enumerate()
             .map(|(i, sample)| (i as f32 + process_count, sample))
         {
-            let position = (count * sr_correction) as usize;
-            if let Some(data) = psola.get_frame(position) {
+            let position = count * sr_correction;
+            if let Some(data) = self.pitch_shifter.get_frame(position) {
                 // Get the adrs value
                 let adrs_envelope = self.adsr.next_value(attack, decay, sustain, release, true);
 

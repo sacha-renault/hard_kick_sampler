@@ -2,6 +2,8 @@ use pitch_detection::detector::mcleod::McLeodDetector;
 use pitch_detection::detector::PitchDetector;
 use tdpsola::{AlternatingHann, Speed, TdpsolaAnalysis, TdpsolaSynthesis};
 
+use crate::pitch_shift::{PitchShiftKind, PitchShifter};
+
 const POWER_THRESHOLD: f32 = 5.0;
 const CLARITY_THRESHOLD: f32 = 0.1;
 
@@ -11,49 +13,94 @@ pub struct PsolaShifter {
     synthesis: Option<Vec<TdpsolaSynthesis>>,
     iter_samples: Option<Vec<Vec<f32>>>,
     source_length: f32,
+    is_loaded: bool,
 }
 
 impl PsolaShifter {
-    pub fn build(sample_buffer: &[f32], channel_number: usize, sample_rate: usize) -> Option<Self> {
+    pub fn new() -> Self {
+        Self {
+            _hanns: Vec::new(),
+            analysis: Vec::new(),
+            synthesis: None,
+            iter_samples: None,
+            source_length: 0.0,
+            is_loaded: false,
+        }
+    }
+
+    fn build_internal(
+        &mut self,
+        sample_buffer: &[f32],
+        channel_number: usize,
+        sample_rate: f32,
+    ) -> bool {
         let scratch_size = sample_buffer.len() * 2;
         let single_channel = sample_buffer
             .iter()
             .step_by(channel_number)
             .copied()
             .collect::<Vec<f32>>();
+
         let mut detector = McLeodDetector::new(single_channel.len(), scratch_size);
-        let pitch = detector.get_pitch(
+
+        if let Some(pitch) = detector.get_pitch(
             &single_channel,
-            sample_rate,
+            sample_rate as usize,
             POWER_THRESHOLD,
             CLARITY_THRESHOLD,
-        )?;
-        let source_wavelength = sample_rate as f32 / pitch.frequency;
+        ) {
+            let source_wavelength = sample_rate / pitch.frequency;
 
-        let mut hanns: Vec<AlternatingHann> = (0..channel_number)
-            .map(|_| AlternatingHann::new(source_wavelength))
-            .collect();
-        let mut analysis = hanns
-            .iter()
-            .map(|hann| TdpsolaAnalysis::new(hann))
-            .collect::<Vec<_>>();
+            let mut hanns: Vec<AlternatingHann> = (0..channel_number)
+                .map(|_| AlternatingHann::new(source_wavelength))
+                .collect();
 
-        for (channel, (analys, hann)) in analysis.iter_mut().zip(hanns.iter_mut()).enumerate() {
-            for sample in sample_buffer.iter().skip(channel).step_by(channel_number) {
-                analys.push_sample(*sample, hann);
+            let mut analysis = hanns
+                .iter()
+                .map(|hann| TdpsolaAnalysis::new(hann))
+                .collect::<Vec<_>>();
+
+            for (channel, (analys, hann)) in analysis.iter_mut().zip(hanns.iter_mut()).enumerate() {
+                for sample in sample_buffer.iter().skip(channel).step_by(channel_number) {
+                    analys.push_sample(*sample, hann);
+                }
             }
-        }
 
-        Some(Self {
-            _hanns: hanns,
-            analysis: analysis,
-            synthesis: None,
-            iter_samples: None,
-            source_length: source_wavelength,
-        })
+            self._hanns = hanns;
+            self.analysis = analysis;
+            self.synthesis = None;
+            self.iter_samples = None;
+            self.source_length = source_wavelength;
+            self.is_loaded = true;
+
+            true
+        } else {
+            // Pitch detection failed
+            self.clear_sample();
+            false
+        }
+    }
+}
+
+impl PitchShifter for PsolaShifter {
+    fn clear_sample(&mut self) {
+        self._hanns.clear();
+        self.analysis.clear();
+        self.synthesis = None;
+        self.iter_samples = None;
+        self.source_length = 0.0;
+        self.is_loaded = false;
     }
 
-    pub fn trigger(&mut self, sr_correction: f32, playback_rate: f32) {
+    fn load_sample(&mut self, sample_buffer: &[f32], channel_number: usize, sample_rate: f32) {
+        self.build_internal(sample_buffer, channel_number, sample_rate);
+    }
+
+    fn trigger(&mut self, sr_correction: f32, playback_rate: f32) {
+        if !self.is_loaded {
+            return;
+        }
+
         // Create NEW synthesis objects each time - analysis stays intact!
         let mut synthesis: Vec<TdpsolaSynthesis> = (0..self._hanns.len())
             .map(|_| {
@@ -75,11 +122,19 @@ impl PsolaShifter {
         self.synthesis = Some(synthesis);
     }
 
-    pub fn get_frame(&mut self, position: usize) -> Option<Vec<f32>> {
+    fn ready(&self) -> bool {
+        self.is_loaded && self.iter_samples.is_some()
+    }
+
+    fn get_frame(&mut self, position: f32) -> Option<Vec<f32>> {
         self.iter_samples
             .as_ref()?
             .iter()
-            .map(|channels| channels.get(position).copied())
+            .map(|channels| channels.get(position as usize).copied())
             .collect()
+    }
+
+    fn kind(&self) -> PitchShiftKind {
+        PitchShiftKind::PSOLA
     }
 }
