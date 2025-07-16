@@ -1,63 +1,116 @@
 label {
     font-size: 14px;
-    color: white;
+    color: var(--text-primary);
 }
 
 button.tab {
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
+    border-bottom-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    color: var(--text-secondary);
+    transition: all 100ms;
+}
+
+button.tab:hover {
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    transition: all 100ms;
 }
 
 button.selected {
-    background-color: grey;
+    background-color: var(--background-tertiary);
+    color: var(--text-primary);
+    border-color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
 }
 
 .sample-info-strip,
 .waveform-vizualizer {
-    background-color: #221100;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
 }
 
 .widget-panel {
-    border: 1px solid #404040;
+    border: 1px solid var(--border-color);
     child-space: 8px;
-    border-radius: 10.0px;
+    border-radius: 10px;
+    background-color: var(--background-secondary);
+    box-shadow: 0 2px 8px var(--shadow-alpha-22);
 }
 
 .widget-panel .panel-title {
-    color: #ff8c00
+    color: var(--text-accent);
+    font-weight: 600;
+    font-size: 16px;
 }
 
 .title {
     font-size: 36;
+    color: var(--text-accent);
+    font-weight: 700;
 }
-
 
 /* Drag to change input */
 .drag-input {
-    border: 1px solid;
-    border-radius: 4px;
-    background-color: #343434;
-    transition: background-color 100ms;
-    child-left: 5px;
-    child-right: 5px;
-    child-top: 3px;
-    child-bottom: 3px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--background-color);
+    transition: all 100ms;
+    child-left: 8px;
+    child-right: 8px;
+    child-top: 6px;
+    child-bottom: 6px;
+    color: var(--text-primary);
+    cursor: grab;
 }
 
-.drag-input:active,
+.drag-input:active {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+    transition: all 100ms;
+    cursor: grabbing;
+    transform: scale(0.98);
+}
+
 .drag-input:hover {
-    background-color: #404040;
-    transition: background-color 100ms;
+    background-color: var(--background-tertiary);
+    border-color: var(--text-accent);
+    transition: all 100ms;
+    box-shadow: 0 2px 4px var(--shadow-alpha-22);
+}
+
+.drag-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-alpha-25);
+    outline: none;
+}
+
+.drag-input:disabled {
+    border-color: var(--disabled-color);
+    background-color: var(--background-secondary);
+    color: var(--disabled-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+    transition: all 100ms;
 }
 
 .drag-input:active:disabled,
-.checkbox:hover:disabled {
-    border: 1px solid;
-    border-radius: 4px;
-    background-color: #343434;
-    transition: background-color 100ms;
+.drag-input:hover:disabled {
+    border-color: var(--disabled-color);
+    background-color: var(--background-secondary);
+    transform: none;
+    box-shadow: none;
+    transition: all 100ms;
 }
 
 .root-note-select .drag-input {
-    width: 42px;
+    width: 48px;
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 }

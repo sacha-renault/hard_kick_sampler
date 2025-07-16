@@ -70,9 +70,7 @@ pub fn get_param(st: &Arc<SharedStates>, index: usize) -> &SamplePlayerParams {
 
 fn create_title_section(cx: &mut Context) {
     // Title - this doesn't need to change
-    Label::new(cx, "Hard Kick Sampler")
-        .color(TEXT_COLOR_ACCENT)
-        .class("title");
+    Label::new(cx, "Hard Kick Sampler").class("title");
 }
 
 fn create_sample_tabs(cx: &mut Context) {
@@ -94,6 +92,8 @@ fn create_sample_tabs(cx: &mut Context) {
         }
     })
     .width(Stretch(1.0))
+    .col_between(Stretch(1.0))
+    .child_bottom(Pixels(PANEL_SPACING))
     .height(Auto);
 }
 
@@ -101,15 +101,20 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
     // First panel row - equal height
     HStack::new(cx, |cx| {
         widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
-            widgets::ParamDragNumber::new(cx, Data::states, move |st| {
-                &get_param(st, index).semitone_offset
-            });
             widgets::ParamSwitch::new(cx, Data::states, move |st| &get_param(st, index).is_tonal);
-            widgets::ParamDragNumber::new(cx, Data::states, move |st| {
-                &get_param(st, index).root_note
-            })
-            .class("root-note-select")
-            .disabled(Data::states.map(move |st| get_param(st, index).is_tonal.value() == false));
+
+            HStack::new(cx, |cx| {
+                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                    &get_param(st, index).root_note
+                })
+                .class("root-note-select")
+                .disabled(
+                    Data::states.map(move |st| get_param(st, index).is_tonal.value() == false),
+                );
+                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                    &get_param(st, index).semitone_offset
+                });
+            });
         })
         .width(Stretch(0.3));
         widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
@@ -211,14 +216,18 @@ fn create_sample_info_strip(cx: &mut Context, index: usize) {
     HStack::new(cx, |cx| {
         // Button for mute / unmute
         widgets::ParamSwitch::new(cx, Data::states, move |st| &get_param(st, index).muted)
-            .width(Stretch(1.0));
+            .width(Stretch(1.0))
+            .top(Stretch(1.0))
+            .bottom(Stretch(1.0));
 
         // Sample Name
         Label::new(
             cx,
             file_name.map(|v| v.clone().unwrap_or_else(|| "No sample loaded".into())),
         )
-        .width(Stretch(1.0));
+        .width(Stretch(1.0))
+        .top(Stretch(1.0))
+        .bottom(Stretch(1.0));
 
         // Btn group
         create_button_group(cx, index, file_path);
@@ -307,7 +316,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
         // The display for waves
         VStack::new(cx, |cx| {
             let buffer = Data::states.get(cx).get_buffer_copy(index);
-            if let Some(data) = buffer {
+            if let Some(audio_data) = buffer {
                 ZStack::new(cx, |cx| {
                     // background canvas
                     Grid::new(
@@ -321,8 +330,8 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     // Waveform canvas
                     // TODO
                     // DO something better here!
-                    let num_channel = data.spec.channels as usize;
-                    let final_data = data.data.into_iter().step_by(num_channel);
+                    let num_channel = audio_data.spec.channels as usize;
+                    let final_data = audio_data.data.into_iter().step_by(num_channel);
                     let silent = 44100. * new_value.get(cx).1;
                     let silent_vec = vec![0.; silent as usize];
                     widgets::Waveform::new(cx, silent_vec.into_iter().chain(final_data).collect())
@@ -404,8 +413,7 @@ pub fn create_editor(
                 create_sample_tabs(cx);
                 create_parameter_panels(cx);
             })
-            .child_space(Units::Pixels(MAIN_PADDING))
-            .background_color(BACKGROUND_COLOR);
+            .child_space(Pixels(MAIN_PADDING));
         },
     )
 }
