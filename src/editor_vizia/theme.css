@@ -1,8 +1,8 @@
 /* GENERAL */
 
 :root {
-    background-color: #202020;
-    color: #f1f1f1;
+    background-color: var(--background-color);
+    color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
         "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
         "Segoe UI Emoji";
@@ -11,43 +11,43 @@
 
 *:focus-visible {
     outline-width: 1px;
-    outline-color: #51afef;
+    outline-color: var(--focus-color);
     outline-offset: 3px;
 }
 
 /* BACKGROUNDS */
 
 .bg-default {
-    background-color: #343434;
+    background-color: var(--background-secondary);
 }
 
 .bg-lighter {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 .bg-darker {
-    background-color: #1d1d1d;
+    background-color: var(--background-color);
 }
 
 /* AVATAR */
 
 avatar {
-    background-color: #343434;
+    background-color: var(--background-secondary);
 }
 
 avatar svg {
-    fill: #181818;
+    fill: var(--background-color);
 }
 
 /* BADGE */
 
 badge {
-    color: white;
-    background-color: #0062ff;
+    color: var(--text-primary);
+    background-color: var(--secondary-color);
 }
 
 badge svg {
-    fill: #fafafa;
+    fill: var(--text-primary);
 }
 
 badge.success {
@@ -59,114 +59,114 @@ badge.warning {
 }
 
 badge.error {
-    background-color: #ff2d2d;
+    background-color: var(--primary-color);
 }
 
 /* BUTTON  */
 
 button {
     border-radius: 4px;
-    background-color: #343434;
+    background-color: var(--background-secondary);
     transition: background-color 100ms;
 }
 
 button:hover {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
     transition: background-color 100ms;
 }
 
 button:active {
-    background-color: #303030;
+    background-color: var(--surface-color);
 }
 
 button.accent,
 button-group.accent > button {
-    background-color: #51afef;
+    background-color: var(--primary-color);
     transition: background-color 100ms;
-    color: #181818;
+    color: var(--text-primary);
 }
 
 button.accent:hover,
 button-group.accent > button:hover {
-    background-color: #80caff;
+    background-color: var(--text-accent);
     transition: background-color 100ms;
 }
 
 button.accent:active,
 button-group.accent > button:active {
-    background-color: #3995d6;
+    background-color: var(--secondary-color);
 }
 
 button.accent:disabled,
 button-group.accent:disabled > button {
     border-width: 0px;
-    background-color: #404040;
-    border-color: #404040;
+    background-color: var(--disabled-color);
+    border-color: var(--disabled-color);
 }
 
 button.outline,
 button-group.outline > button {
     background-color: transparent;
     border-width: 1px;
-    border-color: #51afef;
+    border-color: var(--primary-color);
     transition: background-color 100ms;
-    color: #51afef;
+    color: var(--primary-color);
 }
 
 button.outline:hover,
 button-group.outline > button:hover {
-    background-color: #80caff40;
+    background-color: var(--primary-alpha-25);
     transition: background-color 100ms;
 }
 
 button.outline:active,
 button-group.outline > button:active {
-    background-color: #3995d610;
+    background-color: var(--primary-alpha-10);
 }
 
 button.outline:disabled,
 button-group.outline:disabled > button {
-    border-color: #404040;
-    background-color: #80caff00;
-    color: #404040;
+    border-color: var(--disabled-color);
+    background-color: transparent;
+    color: var(--disabled-color);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 button.text,
 button-group.text > button {
-    background-color: #80caff00;
+    background-color: transparent;
     transition: background-color 100ms;
-    color: #51afef;
+    color: var(--primary-color);
 }
 
 button.text:hover,
 button-group.text > button:hover {
-    background-color: #80caff40;
+    background-color: var(--primary-alpha-25);
     transition: background-color 100ms;
 }
 
 button.text:active,
 button-group.text > button:active {
-    background-color: #3995d610;
+    background-color: var(--primary-alpha-10);
 }
 
 button.text:disabled,
 button-group.text:disabled > button {
-    background-color: #80caff00;
-    color: #585858;
+    background-color: transparent;
+    color: var(--disabled-color);
 }
 
 button:disabled {
-    background-color: #404040;
-    border-color: #404040;
+    background-color: var(--disabled-color);
+    border-color: var(--disabled-color);
     transition: background-color 100ms;
     transition: border-color 100ms;
     transition: color 100ms;
 }
 
 button svg {
-    fill: #f1f1f1;
+    fill: var(--text-primary);
 }
 
 /* BUTTON GROUP */
@@ -216,28 +216,28 @@ button-group.accent {
 checkbox {
     border-radius: 2px;
     border-width: 1px;
-    border-color: #888;
-    background-color: #1d1d1d;
+    border-color: var(--text-secondary);
+    background-color: var(--background-color);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 checkbox:hover {
-    border-color: #51afef;
+    border-color: var(--primary-color);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 checkbox:checked {
-    background-color: #51afef;
-    border-color: #51afef;
-    color: #181818;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 checkbox:disabled {
-    border-color: #404040;
+    border-color: var(--disabled-color);
     transition: border-color 100ms;
 }
 
@@ -247,25 +247,25 @@ checkbox:hover:disabled {
 }
 
 checkbox:checked:hover {
-    background-color: #80caff;
-    border-color: #80caff;
-    color: #181818;
+    background-color: var(--text-accent);
+    border-color: var(--text-accent);
+    color: var(--text-primary);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 checkbox:checked:disabled {
-    background-color: #404040;
-    border-color: #404040;
-    color: #181818;
+    background-color: var(--disabled-color);
+    border-color: var(--disabled-color);
+    color: var(--text-primary);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 checkbox.intermediate {
-    background-color: #51afef;
-    border-color: #51afef;
-    color: #181818;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
@@ -274,23 +274,23 @@ checkbox.intermediate {
 
 chip {
     border-radius: 50%;
-    background-color: #888888;
+    background-color: var(--text-secondary);
 }
 
 chip.outline {
     border-width: 1px;
-    border-color: #888888;
+    border-color: var(--text-secondary);
     background-color: transparent;
 }
 
 chip .close-icon {
-    background-color: #70707000;
+    background-color: transparent;
     transition: background-color 100ms;
     border-radius: 50%;
 }
 
 chip .close-icon:hover {
-    background-color: #707070;
+    background-color: var(--hover-color);
     transition: background-color 100ms;
 }
 
@@ -302,17 +302,17 @@ chip:disabled .icon {
 
 combobox {
     border-radius: 4px;
-    background-color: #1d1d1d;
+    background-color: var(--background-color);
 }
 
 combobox .title {
     border-width: 1px;
-    border-color: #888;
+    border-color: var(--text-secondary);
     border-radius: 4px;
 }
 
 combobox > textbox > label.placeholder {
-    color: #fafafa;
+    color: var(--text-primary);
 }
 
 combobox list list-item {
@@ -320,17 +320,17 @@ combobox list list-item {
 }
 
 combobox .list label.nav {
-    background-color: #51afef34;
+    background-color: var(--primary-alpha-20);
 }
 
 combobox .list label:checked {
-    background-color: #51afef;
+    background-color: var(--primary-color);
 }
 
 /* DATEPICKER */
 
 datepicker {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-radius: 4px;
 }
 
@@ -339,39 +339,39 @@ datepicker {
 }
 
 .datepicker-divisor {
-    background-color: #2f2f2f;
+    background-color: var(--surface-color);
 }
 
 .datepicker-calendar-day {
-    color: #888;
+    color: var(--text-secondary);
     cursor: hand;
 }
 
 .datepicker-calendar-day:checked {
-    color: #181818;
-    background-color: #51afef;
+    color: var(--text-primary);
+    background-color: var(--primary-color);
     border-radius: 4px;
 }
 
 .datepicker-calendar-day-disabled {
-    color: #585858;
+    color: var(--disabled-color);
     cursor: arrow;
 }
 
 .datepicker-selected-date {
-    color: #b0b0b0;
+    color: var(--text-secondary);
 }
 
 /* DIVIDER */
 
 divider > .divider-line {
-    background-color: #565656;
+    background-color: var(--border-color);
 }
 
 /* DROPDOWN */
 
 dropdown {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-radius: 4px;
 }
 
@@ -380,55 +380,55 @@ dropdown list label {
 }
 
 dropdown list label:hover {
-    background-color: #51afef34;
+    background-color: var(--primary-alpha-20);
 }
 
 dropdown list label:checked {
-    background-color: #51afef;
+    background-color: var(--primary-color);
 }
 
 /* ICON */
 icon:disabled {
-    color: #585858;
+    color: var(--disabled-color);
 }
 
 /* KNOB */
 
 knob {
-    background-color: #202020;
+    background-color: var(--background-color);
 }
 
 knob .knob-track {
-    color: #ff8c00;
+    color: var(--secondary-color);
 }
 
 knob:disabled .knob-track {
-    color: #404040;
+    color: var(--disabled-color);
 }
 
 .knob-head {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-width: 2px;
-    border-color: #1d1d1d;
+    border-color: var(--background-color);
 }
 
 knob:disabled .knob-head {
-    background-color: #404040;
+    background-color: var(--disabled-color);
 }
 
 knob .knob-tick {
-    background-color: #888;
+    background-color: var(--text-secondary);
     border-radius: 1px;
 }
 
 knob:disabled .knob-tick {
-    background-color: #404040;
+    background-color: var(--disabled-color);
 }
 
 /* LABEL */
 
 label:disabled {
-    color: #585858;
+    color: var(--disabled-color);
 }
 
 label.describing {
@@ -438,22 +438,22 @@ label.describing {
 /* LIST */
 
 list label.dark {
-    background-color: #00000015;
+    background-color: var(--background-alpha-08);
 }
 
 /* MENU */
 
 menubutton {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-radius: 4px;
 }
 
 menubutton:focus {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 menubutton:hover {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 menubutton:disabled {
@@ -461,20 +461,20 @@ menubutton:disabled {
 }
 
 menubutton .shortcut {
-    color: #c4c4c4;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 
 menubutton svg {
-    fill: #c4c4c4;
+    fill: var(--text-secondary);
 }
 
 submenu svg {
-    fill: #f1f1f1;
+    fill: var(--text-primary);
 }
 
 submenu {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-radius: 4px;
 }
 
@@ -483,15 +483,15 @@ menubar submenu {
 }
 
 submenu:checked {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 submenu:focus {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 submenu:hover {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 submenu:disabled {
@@ -505,10 +505,10 @@ submenu > popup {
 /* NOTIFICATION */
 
 notification {
-    background-color: #262626;
+    background-color: var(--surface-elevated);
     padding: 8px;
     border-radius: 4px;
-    shadow: 0px 2px 16px #00000038;
+    shadow: 0px 2px 16px var(--shadow-alpha-22);
 }
 
 /* PICKLIST */
@@ -519,7 +519,7 @@ picklist {
 
 picklist:focus-visible {
     outline-width: 1px;
-    outline-color: #51afef;
+    outline-color: var(--focus-color);
     outline-offset: 3px;
 }
 
@@ -530,7 +530,7 @@ picklist list list-item {
 picklist list.selectable list-item .focus-indicator {
     width: 2px;
     position-type: absolute;
-    background-color: #51afef;
+    background-color: var(--primary-color);
     visibility: hidden;
 }
 
@@ -543,7 +543,7 @@ picklist list.selectable list-item:checked {
 }
 
 picklist list.selectable list-item .checkmark {
-    fill: #51afef;
+    fill: var(--primary-color);
     visibility: hidden;
 }
 
@@ -552,40 +552,40 @@ picklist list.selectable list-item:checked .checkmark {
 }
 
 picklist list.selectable list-item:hover {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
 }
 
 picklist list.selectable list-item:focus-visible {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
     outline-color: transparent;
 }
 
 /* POPUP */
 
 popup {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-radius: 4px;
-    shadow: 0px 2px 16px #00000038;
+    shadow: 0px 2px 16px var(--shadow-alpha-22);
 }
 
 /* PROGRESS BAR */
 
 progressbar {
     border-radius: 50%;
-    background-color: #262626;
+    background-color: var(--surface-elevated);
     overflow: hidden;
 }
 
 progressbar:disabled {
-    background-color: #404040;
+    background-color: var(--disabled-color);
 }
 
 progressbar .progressbar-bar {
-    background-color: #51afef;
+    background-color: var(--primary-color);
 }
 
 progressbar:disabled .progressbar-bar {
-    background-color: #418abb;
+    background-color: var(--secondary-color);
 }
 
 /* RADIOBUTTON */
@@ -593,61 +593,61 @@ progressbar:disabled .progressbar-bar {
 radiobutton {
     border-width: 2px;
     border-radius: 50%;
-    border-color: #888;
+    border-color: var(--text-secondary);
     background-color: transparent;
     transition: background-color 100ms;
     transition: border-color 100ms;
 }
 
 radiobutton:hover {
-    border-color: #ff8c00;
+    border-color: var(--secondary-color);
     transition: border-color 100ms;
 }
 
 radiobutton:focus-visible {
     outline-width: 1px;
-    outline-color: #ff8c00;
+    outline-color: var(--secondary-color);
     outline-offset: 3px;
 }
 
 radiobutton:checked {
-    border-color: #ff8c00;
+    border-color: var(--secondary-color);
     transition: border-color 100ms;
 }
 
 radiobutton:checked:hover {
-    border-color: #ff8c00;
+    border-color: var(--secondary-color);
     transition: border-color 100ms;
 }
 
 radiobutton:checked:disabled,
 radiobutton:disabled {
-    border-color: #404040;
+    border-color: var(--disabled-color);
     transition: border-color 100ms;
 }
 
 radiobutton .inner {
     border-radius: 50%;
-    background-color: #888;
+    background-color: var(--text-secondary);
     scale: 0;
     transition: scale 100ms;
     transition: background-color 100ms;
 }
 
 radiobutton:checked .inner {
-    background-color: #ff8c00;
+    background-color: var(--secondary-color);
     scale: 1;
     transition: scale 100ms;
     transition: background-color 100ms;
 }
 
 radiobutton:hover .inner {
-    background-color: #ff8c00;
+    background-color: var(--secondary-color);
     transition: background-color 100ms;
 }
 
 radiobutton:disabled .inner {
-    background-color: #404040;
+    background-color: var(--disabled-color);
     transition: background-color 100ms;
     scale: 1;
     transition: scale 100ms;
@@ -656,7 +656,7 @@ radiobutton:disabled .inner {
 /* RATING */
 
 rating svg {
-    fill: #484848;
+    fill: var(--disabled-color);
     font-size: x-large;
     width: 20px;
     height: 20px;
@@ -664,15 +664,15 @@ rating svg {
 }
 
 rating svg:checked {
-    fill: gold;
+    fill: var(--text-accent);
 }
 
 rating:over svg:enabled {
-    fill: #484848;
+    fill: var(--disabled-color);
 }
 
 rating:over > svg.foo:enabled {
-    fill: gold;
+    fill: var(--text-accent);
 }
 
 rating svg:hover {
@@ -681,12 +681,12 @@ rating svg:hover {
 }
 
 rating svg:disabled {
-    fill: #404040;
+    fill: var(--disabled-color);
     scale: 1;
 }
 
 rating svg:checked:disabled {
-    fill: #3c3826;
+    fill: #4d3845;
 }
 
 /* SCROLLVIEW */
@@ -705,7 +705,7 @@ scrollbar {
 }
 
 scrollbar .thumb {
-    background-color: #565656;
+    background-color: var(--border-color);
     border-radius: 50%;
     opacity: 0;
     transition: opacity 200ms 0s linear;
@@ -713,21 +713,21 @@ scrollbar .thumb {
 
 scrollview.h-scroll:hover > scrollbar.horizontal > .thumb,
 scrollview.v-scroll:hover > scrollbar.vertical > .thumb {
-    background-color: #565656;
+    background-color: var(--border-color);
     opacity: 1;
     transition: opacity 200ms 0s linear;
 }
 
 scrollview.h-scroll:active > scrollbar.horizontal > .thumb,
 scrollview.v-scroll:active > scrollbar.vertical > .thumb {
-    background-color: #626262;
+    background-color: var(--hover-color);
     opacity: 1;
     transition: opacity 200ms 0s linear;
 }
 
 scrollview.h-scroll > scrollbar.horizontal:active > .thumb,
 scrollview.v-scroll > scrollbar.vertical:active > .thumb {
-    background-color: #626262;
+    background-color: var(--hover-color);
     opacity: 1;
     transition: opacity 200ms 0s linear;
 }
@@ -740,46 +740,46 @@ slider {
 
 slider:focus-visible {
     outline-width: 1px;
-    outline-color: #51afef80;
+    outline-color: var(--primary-alpha-50);
     outline-offset: 3px;
     border-radius: 4px;
 }
 
 slider .track {
-    background-color: #51afef20;
+    background-color: var(--primary-alpha-10);
     border-radius: 2px;
 }
 
 slider .active {
-    background-color: #51afef80;
+    background-color: var(--primary-alpha-50);
     border-radius: 2px;
 }
 
 slider .thumb {
-    background-color: #51afef;
+    background-color: var(--primary-color);
     border-radius: 50%;
 }
 
 slider .thumb:hover {
-    background-color: #80caff;
+    background-color: var(--text-accent);
 }
 
 slider:disabled {
-    background-color: #404040;
+    background-color: var(--disabled-color);
 }
 
 slider:disabled .active {
-    background-color: #404040;
+    background-color: var(--disabled-color);
 }
 
 slider:disabled .thumb {
-    background-color: #404040;
+    background-color: var(--disabled-color);
 }
 
 /* SPINBOX */
 
 spinbox {
-    background-color: #343434;
+    background-color: var(--background-secondary);
     border-radius: 4px;
 }
 
@@ -788,11 +788,11 @@ spinbox .spinbox-button {
 }
 
 spinbox .spinbox-button:hover {
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 spinbox .spinbox-value {
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 spinbox textbox.spinbox-value {
@@ -816,60 +816,60 @@ spinbox picklist.spinbox-value {
 
 switch .switch-handle-bg {
     border-radius: 6px;
-    background-color: #343434;
+    background-color: var(--background-secondary);
     transition: background-color 100ms;
 }
 
 switch .switch-handle {
-    background-color: #888888;
+    background-color: var(--text-secondary);
     border-radius: 50%;
     transition: background-color 100ms;
     transition: left 100ms;
 }
 
 switch:hover .switch-handle {
-    background-color: #b5b5b5;
+    background-color: var(--text-primary);
     transition: background-color 100ms;
 }
 
 switch:focus-visible {
     outline-width: 1px;
-    outline-color: #51afef80;
+    outline-color: var(--primary-alpha-50);
     outline-offset: 3px;
 }
 
 switch:checked .switch-handle-bg {
-    background-color: #b8530d40;
+    background-color: var(--secondary-alpha-25);
     transition: background-color 100ms;
 }
 
 switch:checked .switch-handle {
-    background-color: #ff8c00;
+    background-color: var(--secondary-color);
     transition: background-color 100ms;
 }
 
 switch:checked:hover .switch-handle {
-    background-color: #ff8c00;
+    background-color: var(--secondary-color);
     transition: background-color 100ms;
 }
 
 switch:disabled * {
-    background-color: #404040;
+    background-color: var(--disabled-color);
     transition: background-color 100ms;
 }
 
 switch:hover:disabled * {
-    background-color: #404040;
+    background-color: var(--disabled-color);
     transition: background-color 100ms;
 }
 
 switch:checked:disabled * {
-    background-color: #404040;
+    background-color: var(--disabled-color);
     transition: background-color 100ms;
 }
 
 switch:checked:hover:disabled * {
-    background-color: #404040;
+    background-color: var(--disabled-color);
     transition: background-color 100ms;
 }
 
@@ -880,11 +880,11 @@ tabheader:disabled {
 }
 
 tabheader:checked .indicator {
-    background-color: #51afef;
+    background-color: var(--primary-color);
 }
 
 tabview .tabview-divider {
-    background-color: #565656;
+    background-color: var(--border-color);
 }
 
 /* TEXTBOX */
@@ -892,25 +892,25 @@ tabview .tabview-divider {
 textbox {
     border-width: 1px;
     border-radius: 4px;
-    border-color: #888;
-    background-color: #1d1d1d;
+    border-color: var(--text-secondary);
+    background-color: var(--background-color);
     transition: border-color 100ms;
     transition: background-color 100ms;
 }
 
 textbox:checked {
-    border-color: #51afef;
-    background-color: #1d1d1d;
+    border-color: var(--primary-color);
+    background-color: var(--background-color);
     transition: border-color 100ms;
 }
 
 textbox:checked.caret {
-    caret-color: #c4c4c4;
+    caret-color: var(--text-secondary);
 }
 
 textbox > label.placeholder {
     caret-color: transparent;
-    color: #888;
+    color: var(--text-secondary);
 }
 
 textbox:read-only {
@@ -919,90 +919,90 @@ textbox:read-only {
 }
 
 textbox:disabled {
-    color: #585858;
+    color: var(--disabled-color);
     transition: color 100ms;
 }
 
 textbox:focus-visible {
-    border-color: #51afef80;
+    border-color: var(--primary-alpha-50);
     transition: border-color 100ms;
 }
 
 textbox:invalid {
-    border-color: #ef5151;
+    border-color: var(--primary-color);
     border-width: 1px;
     transition: border-color 100ms;
-    background-color: #3c2c2c;
+    background-color: #2d1820;
 }
 
 /* TOGGLE BUTTON */
 
 toggle-button {
     border-radius: 4px;
-    background-color: #343434;
+    background-color: var(--background-secondary);
     transition: background-color 100ms;
 }
 
 toggle-button:hover {
-    background-color: #404040;
+    background-color: var(--background-tertiary);
     transition: background-color 100ms;
 }
 
 toggle-button:active {
-    background-color: #303030;
+    background-color: var(--surface-color);
 }
 
 toggle-button:checked {
-    background-color: #1d1d1d;
+    background-color: var(--background-color);
     transition: background-color 100ms;
 }
 
 toggle-button:disabled {
-    color: #626262;
-    background-color: #404040;
+    color: var(--disabled-color);
+    background-color: var(--disabled-color);
     transition: background-color 100ms;
 }
 
 toggle-button svg {
-    fill: #f1f1f1;
+    fill: var(--text-primary);
 }
 
 /* TOOLTIP */
 tooltip {
     padding: 4px;
-    background-color: #888;
+    background-color: var(--text-secondary);
     border-radius: 4px;
 }
 
 tooltip arrow {
-    background-color: #888;
+    background-color: var(--text-secondary);
 }
 
 /* VIRTUAL LIST */
 
 virtual-list label.dark {
-    background-color: #00000015;
+    background-color: var(--background-alpha-08);
 }
 
 /* XY PAD */
 
 xypad {
-    border-color: #ffffff;
+    border-color: var(--text-primary);
 }
 
 xypad .thumb {
-    border-color: #ffffff;
+    border-color: var(--text-primary);
 }
 
 xypad:disabled {
-    background-color: #323232;
+    background-color: var(--disabled-color);
 }
 
 collapsible {
-    background-color: #404040;
-    shadow: 0px 2px 2px #00000038;
+    background-color: var(--background-tertiary);
+    shadow: 0px 2px 2px var(--shadow-alpha-22);
 }
 
 collapsible > .header > .expand-icon {
-    fill: #979797;
+    fill: var(--text-secondary);
 }

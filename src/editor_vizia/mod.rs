@@ -365,6 +365,14 @@ fn create_parameter_panels(cx: &mut Context) {
     });
 }
 
+struct CssString(String);
+
+impl IntoCssStr for CssString {
+    fn get_style(&self) -> Result<String, std::io::Error> {
+        Ok(self.0.clone())
+    }
+}
+
 pub fn create_editor(
     states: Arc<SharedStates>,
     async_executor: AsyncExecutor<HardKickSampler>,
@@ -373,9 +381,14 @@ pub fn create_editor(
         ViziaState::new(|| (801, 600)),
         nih_plug_vizia::ViziaTheming::None,
         move |cx, _| {
-            cx.add_stylesheet(include_style!("src/editor_vizia/style.css"))
+            let variable_map = css_var_resolver::build_variable_map(THEMES_VAR);
+            let css_style =
+                css_var_resolver::resolve_css_variables(include_str!("style.css"), &variable_map);
+            let css_theme =
+                css_var_resolver::resolve_css_variables(include_str!("theme.css"), &variable_map);
+            cx.add_stylesheet(CssString(css_style))
                 .expect("Coudln't load css file.");
-            cx.add_stylesheet(include_style!("src/editor_vizia/theme.css"))
+            cx.add_stylesheet(CssString(css_theme))
                 .expect("Coudln't load css file.");
 
             // Build data

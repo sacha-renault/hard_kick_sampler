@@ -941,6 +941,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "css_var_resolver"
+version = "0.1.0"
+source = "git+https://github.com/sacha-renault/css_var_resolver#6e7be21c569e05760c47c0159c01e2e52a446429"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "cssparser"
 version = "0.29.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1589,6 +1597,7 @@ dependencies = [
 name = "hard_kick_sampler"
 version = "0.1.0"
 dependencies = [
+ "css_var_resolver",
  "cyma",
  "derive_more 2.0.1",
  "hound",

@@ -21,6 +21,7 @@ hound = "3.5"
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["assert_process_allocs"] }
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 cyma = { git = "https://github.com/exa04/cyma" }
+css_var_resolver = { git = "https://github.com/sacha-renault/css_var_resolver" }
 rfd = "0.15.3"
 tdpsola = "0.1.0"
 pitch-detection = "0.3.0"
