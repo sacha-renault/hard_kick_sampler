@@ -425,9 +425,6 @@ impl SamplePlayer {
     fn process_buffer(&mut self, buffer: &mut Buffer, process_count: f32) {
         let params = self.get_params();
 
-        // Get the sr correction
-        let sr_correction = self.get_sr_correction();
-
         // We don't want those param to be any smoothed!
         let attack = params.attack.value();
         let decay = params.decay.value();
