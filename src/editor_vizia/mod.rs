@@ -16,13 +16,14 @@ use nih_plug_vizia::{create_vizia_editor, ViziaState};
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
-use crate::tasks::TaskRequests;
+use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
 use style::*;
 
 pub enum AppEvent {
     SelectSample(usize),
     FileLoading(usize, PathBuf),
+    SampleDeleted(usize),
 }
 
 #[derive(Lens)]
@@ -60,6 +61,12 @@ impl Model for Data {
                 cx.emit(RawParamEvent::BeginSetParameter(ptr));
                 cx.emit(RawParamEvent::SetParameterNormalized(ptr, normalized));
                 cx.emit(RawParamEvent::EndSetParameter(ptr));
+            }
+            AppEvent::SampleDeleted(index) => {
+                self.executor
+                    .execute_background(TaskRequests::TransfertTask(TaskResults::ClearSample(
+                        *index,
+                    )));
             }
         });
     }
@@ -290,7 +297,12 @@ fn create_button_group(
             |cx| Label::new(cx, ">"),
         )
         .disabled(next_file.map(|v| v.is_none()));
-        Button::new(cx, |_| {}, |cx| Label::new(cx, "🗑️"));
+        Button::new(
+            cx,
+            move |cx| cx.emit(AppEvent::SampleDeleted(index)),
+            |cx| Label::new(cx, "🗑️"),
+        )
+        .disabled(file_path.map(|file| file.is_none()));
     })
     .col_between(Pixels(2.0))
     .height(Auto)

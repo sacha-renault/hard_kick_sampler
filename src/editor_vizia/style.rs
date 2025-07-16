@@ -1,5 +1,3 @@
-use nih_plug_vizia::vizia::style::Color;
-
 pub const PANEL_SPACING: f32 = 16.0;
 pub const MAIN_PADDING: f32 = 16.0;
 pub const PANEL_PADDING: f32 = 8.0;
