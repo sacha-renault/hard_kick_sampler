@@ -12,7 +12,6 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
-// use crate::editor::waveform::WavePlot;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -337,24 +336,37 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     // First, we have to know how many frame we wanna display
                     let bpm = Data::states.get(cx).host_bpm.load(Ordering::Relaxed);
                     let sr = audio_data.spec.sample_rate as f32;
-                    let num_frames = (1.5 * 4.0 * 60.0 * sr / bpm) as usize;
                     let (_, start_offset) = new_value.get(cx);
+
+                    // calc sum
+                    let num_frames = customs::get_num_displayed_frames(1.5, sr, bpm);
+                    let num_channels = audio_data.spec.channels as usize;
 
                     // Waveform canvas
                     // TODO
                     // DO something better here!
-                    let num_channel = audio_data.spec.channels as usize;
-                    let final_data = audio_data
-                        .data
-                        .into_iter()
-                        .step_by(num_channel)
-                        .take(num_frames)
-                        .collect();
-                    let num_silent_frames = (sr * start_offset) as usize;
-                    let silent_vec = vec![0.; num_silent_frames];
-                    let final_data = [silent_vec, final_data].concat();
+                    let final_data = customs::get_waveform(
+                        &audio_data.data,
+                        num_frames,
+                        num_channels,
+                        0,
+                        start_offset,
+                        sr,
+                    );
 
+                    // Make waveform
                     widgets::Waveform::new(cx, final_data).outline_width(Pixels(1.0));
+
+                    Binding::new(
+                        cx,
+                        Data::states.map(move |st| st.positions[index].load(Ordering::Relaxed)),
+                        move |cx, position| {
+                            let pos = position.get(cx) as f32 / num_frames as f32;
+                            widgets::Waveform::new(cx, vec![[pos, -1.], [pos, 1.]])
+                                .outline_width(Pixels(2.0))
+                                .class("time-indicator");
+                        },
+                    );
 
                     // Position canvas
 

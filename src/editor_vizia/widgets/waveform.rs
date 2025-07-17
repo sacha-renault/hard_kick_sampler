@@ -5,11 +5,11 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 /// For displaying frequently updating waveform data, use an [`Oscilloscope`]
 /// instead.
 pub struct Waveform {
-    data: Vec<f32>,
+    data: Vec<[f32; 2]>,
 }
 
 impl Waveform {
-    pub fn new(cx: &mut Context, data: Vec<f32>) -> Handle<Self> {
+    pub fn new(cx: &mut Context, data: Vec<[f32; 2]>) -> Handle<Self> {
         Self { data }.build(cx, |_| {})
     }
 }
@@ -24,19 +24,22 @@ impl View for Waveform {
         let x = bounds.x;
         let y = bounds.y;
         let w = bounds.w;
-        let h = bounds.h;
+        let hh = bounds.h / 2.0; // half height
 
         // Waveform
         canvas.stroke_path(
             &{
                 let mut path = vg::Path::new();
 
-                path.move_to(x, y + (h / 2.) * (1. - self.data[0].clamp(-1., 1.)));
+                if let Some(first_point) = self.data.first() {
+                    let x_pos = x + first_point[0] * w;
+                    let y_pos = y + hh - first_point[1].clamp(-1., 1.) * hh;
+                    path.move_to(x_pos, y_pos);
+                }
 
-                for (i, &v) in self.data.iter().enumerate().skip(1) {
-                    let x_pos = x + (w / self.data.len() as f32) * i as f32;
-                    let y_pos = y + h / 2.0 - v.clamp(-1., 1.) * (h / 2.0);
-
+                for &[x_norm, v] in self.data.iter().skip(1) {
+                    let x_pos = x + x_norm * w;
+                    let y_pos = y + hh - v.clamp(-1., 1.) * hh;
                     path.line_to(x_pos, y_pos);
                 }
                 path

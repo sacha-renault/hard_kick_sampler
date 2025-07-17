@@ -114,3 +114,7 @@ button.selected {
     font-weight: 600;
     letter-spacing: 0.5px;
 }
+
+.time-indicator {
+    color: var(--primary-color);
+}
