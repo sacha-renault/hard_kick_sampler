@@ -452,7 +452,7 @@ impl SamplePlayer {
         let release = params.release.value();
         let gain = params.gain.value();
         let top_gain = self.params.gain.value();
-        let start_offset = params.start_offset.value();
+        let frames_offset = params.start_offset.value() * self.host_sample_rate;
 
         // Get the blend value
         let group = params.blend_group.value();
@@ -468,7 +468,7 @@ impl SamplePlayer {
         {
             // Get the adrs value
             let adrs_envelope = self.adsr.next(attack, decay, sustain, release);
-            let offset_position = utils::optional_positive_sub(position, start_offset);
+            let offset_position = utils::optional_positive_sub(position, -frames_offset);
 
             if let Some(data) = offset_position.and_then(|pos| self.pitch_shifter.get_frame(pos)) {
                 for (sample, value) in frame.into_iter().zip(data) {
