@@ -4,6 +4,8 @@ use derive_more::Constructor;
 use nih_plug::nih_log;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
+use crate::utils;
+
 /// Mini struct to easy normalize the vlaues
 #[derive(Debug, Constructor)]
 struct Normalizer {
@@ -28,18 +30,23 @@ impl Normalizer {
     fn normalize(&self, x: f32, y: f32) -> (f32, f32) {
         (self.normalize_x(x), self.normalize_y(y))
     }
+
+    #[inline]
+    fn get_width(&self) -> f32 {
+        self.width
+    }
 }
 
 /// Static waveform.
 ///
 /// For displaying frequently updating waveform data, use an [`Oscilloscope`]
 /// instead.
-pub struct WavePlot {
+pub struct StaticWavePlot {
     data: Vec<[f32; 2]>,
     cached_texture: RefCell<Option<vg::ImageId>>,
 }
 
-impl WavePlot {
+impl StaticWavePlot {
     pub fn new(cx: &mut Context, data: Vec<[f32; 2]>) -> Handle<Self> {
         Self {
             data,
@@ -48,13 +55,13 @@ impl WavePlot {
         .build(cx, |_| {})
     }
 
-    fn _downsample(_data: &[[f32; 2]], _threshold: f32) -> Vec<[f32; 2]> {
-        todo!()
-    }
-
     fn build_waveform_path(&self, normalizer: &Normalizer) -> vg::Path {
         let mut path = vg::Path::new();
-        let mut iterator = self.data.iter();
+
+        // Downsample and create path
+        let num_points = normalizer.get_width() * 4.0;
+        let downsampled = utils::downsample_lttb(&self.data, num_points as usize);
+        let mut iterator = downsampled.iter();
 
         if let Some(&[mut x, mut y]) = iterator.next() {
             (x, y) = normalizer.normalize(x, y);
@@ -66,7 +73,10 @@ impl WavePlot {
             path.line_to(x, y);
         }
 
-        nih_log!("Path created!");
+        nih_log!(
+            "Path created! Ratio {}",
+            100.0 * (1. - downsampled.len() as f32 / self.data.len() as f32)
+        );
 
         path
     }
@@ -111,9 +121,13 @@ impl WavePlot {
             self.create_texture(cx, canvas)
         }
     }
+
+    fn invalidate_texture(&self) {
+        *self.cached_texture.borrow_mut() = None;
+    }
 }
 
-impl View for WavePlot {
+impl View for StaticWavePlot {
     fn element(&self) -> Option<&'static str> {
         Some("waveform")
     }
@@ -145,5 +159,19 @@ impl View for WavePlot {
             &vg::Paint::color(cx.font_color().into())
                 .with_line_width(cx.scale_factor() * cx.outline_width()),
         );
+    }
+
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|window_event, _| match window_event {
+            WindowEvent::GeometryChanged(_) => {
+                self.invalidate_texture();
+                cx.needs_redraw();
+            }
+            WindowEvent::Restyle => {
+                self.invalidate_texture();
+                cx.needs_redraw();
+            }
+            _ => {}
+        });
     }
 }

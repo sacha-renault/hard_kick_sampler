@@ -230,3 +230,73 @@ pub fn get_blend_value(
         value.clamp(0., 1.)
     }
 }
+
+pub fn downsample_lttb(data: &[[f32; 2]], target_points: usize) -> Vec<[f32; 2]> {
+    if data.len() <= target_points || target_points < 3 {
+        return data.to_vec();
+    }
+
+    let mut result = Vec::with_capacity(target_points);
+    let bucket_size = (data.len() - 2) as f32 / (target_points - 2) as f32;
+
+    // Always include first point
+    result.push(data[0]);
+
+    let mut a = 0; // Index of previous selected point
+
+    for i in 1..(target_points - 1) {
+        // Calculate average point of next bucket
+        let avg_range_start = ((i as f32 * bucket_size) as usize + 1).min(data.len() - 1);
+        let avg_range_end = (((i + 1) as f32 * bucket_size) as usize + 1).min(data.len());
+
+        let avg_x = if avg_range_start < avg_range_end {
+            data[avg_range_start..avg_range_end]
+                .iter()
+                .map(|p| p[0])
+                .sum::<f32>()
+                / (avg_range_end - avg_range_start) as f32
+        } else {
+            data[data.len() - 1][0]
+        };
+
+        let avg_y = if avg_range_start < avg_range_end {
+            data[avg_range_start..avg_range_end]
+                .iter()
+                .map(|p| p[1])
+                .sum::<f32>()
+                / (avg_range_end - avg_range_start) as f32
+        } else {
+            data[data.len() - 1][1]
+        };
+
+        // Calculate range for current bucket
+        let range_start = ((i - 1) as f32 * bucket_size) as usize + 1;
+        let range_end = (i as f32 * bucket_size) as usize + 1;
+
+        let point_a = data[a];
+        let mut max_area = 0.0;
+        let mut max_area_point = range_start;
+
+        // Find point that forms largest triangle with point A and average point
+        for idx in range_start..range_end.min(data.len()) {
+            let point = data[idx];
+
+            // Calculate triangle area using cross product
+            let area = ((point_a[0] - avg_x) * (point[1] - point_a[1])
+                - (point_a[0] - point[0]) * (avg_y - point_a[1]))
+                .abs();
+
+            if area > max_area {
+                max_area = area;
+                max_area_point = idx;
+            }
+        }
+
+        result.push(data[max_area_point]);
+        a = max_area_point;
+    }
+
+    // Always include last point
+    result.push(data[data.len() - 1]);
+    result
+}
