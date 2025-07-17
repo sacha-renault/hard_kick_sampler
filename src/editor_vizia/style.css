@@ -118,3 +118,7 @@ button.selected {
 .time-indicator {
     color: var(--primary-color);
 }
+
+.waveform-canvas {
+    color: var(--text-primary)
+}

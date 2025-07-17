@@ -333,6 +333,22 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         Orientation::Horizontal,
                     );
 
+                    Grid::new(
+                        cx,
+                        ValueScaling::Linear,
+                        (0., 1.5),
+                        vec![1.],
+                        Orientation::Vertical,
+                    );
+
+                    // Grid::new(
+                    //     cx,
+                    //     ValueScaling::Linear,
+                    //     (0., 1.5),
+                    //     vec![0.25, 0.5, 0.75, 1.25],
+                    //     Orientation::Vertical,
+                    // );
+
                     // First, we have to know how many frame we wanna display
                     let bpm = Data::states.get(cx).host_bpm.load(Ordering::Relaxed);
                     let sr = audio_data.spec.sample_rate as f32;
@@ -355,7 +371,9 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     );
 
                     // Make waveform
-                    widgets::Waveform::new(cx, final_data).outline_width(Pixels(1.0));
+                    widgets::Waveform::new(cx, final_data)
+                        .outline_width(Pixels(1.0))
+                        .class("waveform-canvas");
 
                     Binding::new(
                         cx,
