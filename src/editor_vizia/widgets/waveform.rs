@@ -18,7 +18,7 @@ struct Normalizer {
 impl Normalizer {
     #[inline]
     fn normalize_x(&self, x: f32) -> f32 {
-        self.x_bound + x * self.width
+        self.x_bound + x.clamp(0., 1.) * self.width
     }
 
     #[inline]

@@ -1,3 +1,5 @@
+use nih_plug_vizia::vizia::prelude::*;
+
 use crate::plugin::DEFAULT_BPM;
 
 pub fn get_num_displayed_frames(bars: f32, sr: f32, mut bpm: f32) -> usize {
@@ -39,4 +41,12 @@ pub fn get_waveform(
     }
 
     result
+}
+
+pub fn neon_indicator<T: Lens<Target = f32>>(cx: &mut Context, lens: T) -> Handle<'_, Element> {
+    Element::new(cx)
+        .height(Stretch(1.0))
+        .left(lens.map(|val| Percentage(val.clamp(0., 1.) * 100.0)))
+        .disabled(lens.map(|&value| value <= 0.))
+        .class("time-indicator")
 }

@@ -375,18 +375,13 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         .outline_width(Pixels(1.0))
                         .class("waveform-canvas");
 
-                    Binding::new(
+                    // Time indicator
+                    customs::neon_indicator(
                         cx,
-                        Data::states.map(move |st| st.positions[index].load(Ordering::Relaxed)),
-                        move |cx, position| {
-                            let pos = position.get(cx) as f32 / num_frames as f32;
-                            widgets::StaticWavePlot::new(cx, vec![[pos, -1.], [pos, 1.]])
-                                .outline_width(Pixels(2.0))
-                                .class("time-indicator");
-                        },
+                        Data::states.map(move |st| {
+                            st.positions[index].load(Ordering::Relaxed) as f32 / num_frames as f32
+                        }),
                     );
-
-                    // Position canvas
 
                     // Something else ...
                 });

@@ -115,8 +115,18 @@ button.selected {
     letter-spacing: 0.5px;
 }
 
+.time-indicator:disabled {
+    box-shadow: 0px 0px 0px 0px var(--primary-color);
+}
+
 .time-indicator {
-    color: var(--primary-color);
+    width: 2px;
+    background-color: var(--text-accent);
+    box-shadow: 
+        0px 0px 5px 1px var(--primary-color),
+        0px 0px 10px 2px var(--primary-color),
+        0px 0px 15px 3px var(--primary-color),
+        0px 0px 20px 4px var(--primary-color);
 }
 
 .waveform-canvas {
