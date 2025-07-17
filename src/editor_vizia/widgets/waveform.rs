@@ -68,7 +68,7 @@ impl StaticWavePlot {
             path.move_to(x, y);
         }
 
-        while let Some(&[mut x, mut y]) = iterator.next() {
+        for &[mut x, mut y] in iterator {
             (x, y) = normalizer.normalize(x, y);
             path.line_to(x, y);
         }
@@ -116,7 +116,7 @@ impl StaticWavePlot {
 
     fn get_cached_texture(&self, cx: &mut DrawContext, canvas: &mut Canvas) -> Option<vg::ImageId> {
         if self.cached_texture.borrow().is_some() {
-            self.cached_texture.borrow().clone()
+            *self.cached_texture.borrow()
         } else {
             self.create_texture(cx, canvas)
         }

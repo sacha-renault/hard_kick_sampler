@@ -19,5 +19,4 @@ pub enum TaskResults {
 pub enum TaskRequests {
     TransfertTask(TaskResults),
     LoadFile(usize, PathBuf),
-    OpenFilePicker(usize),
 }

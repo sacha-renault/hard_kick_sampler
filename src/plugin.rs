@@ -278,16 +278,6 @@ impl Plugin for HardKickSampler {
                     let _ = sender.send(TaskResults::LoadedFile(index, path, audio_data));
                 }
             }
-            TaskRequests::OpenFilePicker(index) => {
-                let path_opt = rfd::FileDialog::new()
-                    .add_filter("audio", &["wav"])
-                    .pick_file();
-                if let Some(path) = path_opt {
-                    if let Ok(audio_data) = utils::load_audio_file(&path) {
-                        let _ = sender.send(TaskResults::LoadedFile(index, path, audio_data));
-                    }
-                }
-            }
         })
     }
 }

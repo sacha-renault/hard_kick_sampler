@@ -1,17 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use nih_plug::prelude::{Smoothable, Smoother};
-
 use crate::{params::BlendGroup, tasks::AudioData};
-
-#[inline]
-pub fn load_smooth_param<T: Smoothable>(smoother: &Smoother<T>, is_first_channel: bool) -> T {
-    if is_first_channel {
-        smoother.next()
-    } else {
-        smoother.previous_value()
-    }
-}
 
 pub fn load_audio_file(file_path: &Path) -> Result<AudioData, Box<dyn std::error::Error>> {
     match file_path.extension().and_then(|ext| ext.to_str()) {
@@ -278,9 +267,12 @@ pub fn downsample_lttb(data: &[[f32; 2]], target_points: usize) -> Vec<[f32; 2]>
         let mut max_area_point = range_start;
 
         // Find point that forms largest triangle with point A and average point
-        for idx in range_start..range_end.min(data.len()) {
-            let point = data[idx];
-
+        for (idx, point) in data
+            .iter()
+            .enumerate()
+            .take(range_end.min(data.len()))
+            .skip(range_start)
+        {
             // Calculate triangle area using cross product
             let area = ((point_a[0] - avg_x) * (point[1] - point_a[1])
                 - (point_a[0] - point[0]) * (avg_y - point_a[1]))

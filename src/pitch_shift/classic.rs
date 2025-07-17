@@ -35,11 +35,6 @@ impl ClassicShifter {
             channel_index,
         )
     }
-
-    /// Linear interpolation between two samples
-    fn interpolate(current: f32, next: f32, fraction: f32) -> f32 {
-        current + (next - current) * fraction
-    }
 }
 
 impl PitchShifter for ClassicShifter {
@@ -83,7 +78,7 @@ impl PitchShifter for ClassicShifter {
 
             let sample_value = match (current_sample, next_sample) {
                 // Both samples available - interpolate
-                (Some(&current), Some(&next)) => Self::interpolate(current, next, fraction),
+                (Some(&current), Some(&next)) => utils::interpolate(current, next, fraction),
                 // Only current sample available
                 (Some(&current), None) => current,
                 // No samples available - end of buffer
