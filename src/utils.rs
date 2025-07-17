@@ -128,7 +128,7 @@ pub fn get_previous_file_in_directory_wrap(file_path: &str) -> Option<PathBuf> {
     Some(entries[prev_index].clone())
 }
 
-pub fn clipping_sub(lhs: usize, rhs: usize) -> Option<usize> {
+pub fn optional_positive_sub(lhs: f32, rhs: f32) -> Option<f32> {
     if lhs >= rhs {
         Some(lhs - rhs)
     } else {
