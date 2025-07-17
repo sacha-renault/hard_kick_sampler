@@ -23,9 +23,9 @@ enum AdsrStage {
 /// 4. **Release**: When the note ends, the envelope falls from sustain level to 0
 ///
 /// ## Generate envelope values for stereo audio (2 channels)
-/// let left = adsr.next_value(0.1, 0.2, 0.7, 0.5, true);   // First channel advances
-/// let right = adsr.next_value(0.1, 0.2, 0.7, 0.5, false); // Second channel gets same value
-pub struct MultiChannelAdsr {
+/// let left = adsr.next(0.1, 0.2, 0.7, 0.5);   // First channel advances
+/// let right = adsr.next(0.1, 0.2, 0.7, 0.5); // Second channel gets same value
+pub struct Adsr {
     /// Current sample rate
     sample_rate: f32,
 
@@ -39,7 +39,7 @@ pub struct MultiChannelAdsr {
     stage: AdsrStage,
 }
 
-impl MultiChannelAdsr {
+impl Adsr {
     pub fn new(sample_rate: f32) -> Self {
         Self {
             stage: AdsrStage::Idle,
@@ -110,7 +110,7 @@ impl MultiChannelAdsr {
     }
 
     #[inline]
-    fn safe_current_value(&self) -> f32 {
+    pub fn safe_current_value(&self) -> f32 {
         #[cfg(debug_assertions)]
         {
             if self.current_value.is_nan() {
@@ -136,9 +136,20 @@ impl MultiChannelAdsr {
         }
     }
 
-    /// Internal method that advances the envelope by one sample and returns the current value.
+    /// Generates the next envelope value for multi-channel audio.
+    ///
+    /// This is the main method for generating envelope values. For multi-channel audio,
+    /// call this once per channel per sample, with `is_first_channel` set to `true` only
+    /// for the first channel. This ensures all channels share the same envelope timing.
+    ///
+    /// # Arguments
+    ///
+    /// * `attack` - Attack time in seconds (time to rise from 0 to 1)
+    /// * `decay` - Decay time in seconds (time to fall from 1 to sustain level)
+    /// * `sustain` - Sustain level (the level held during the sustain phase)
+    /// * `release` - Release time in seconds (time to fall from sustain to 0)
     #[inline]
-    fn next(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) -> f32 {
+    pub fn next(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) -> f32 {
         match &self.stage {
             AdsrStage::Idle => {
                 self.current_value = 0.0;
@@ -193,35 +204,6 @@ impl MultiChannelAdsr {
         // On debug build, plugin will crash if invalid value occurs
         self.safe_current_value()
     }
-
-    /// Generates the next envelope value for multi-channel audio.
-    ///
-    /// This is the main method for generating envelope values. For multi-channel audio,
-    /// call this once per channel per sample, with `is_first_channel` set to `true` only
-    /// for the first channel. This ensures all channels share the same envelope timing.
-    ///
-    /// # Arguments
-    ///
-    /// * `attack` - Attack time in seconds (time to rise from 0 to 1)
-    /// * `decay` - Decay time in seconds (time to fall from 1 to sustain level)
-    /// * `sustain` - Sustain level (the level held during the sustain phase)
-    /// * `release` - Release time in seconds (time to fall from sustain to 0)
-    /// * `is_first_channel` - Whether this is the first channel (advances timing if true)
-    pub fn next_value(
-        &mut self,
-        attack: f32,
-        decay: f32,
-        sustain: f32,
-        release: f32,
-        is_first_channel: bool,
-    ) -> f32 {
-        // Do not advance if it's not first channel, just return the same value
-        if !is_first_channel {
-            self.safe_current_value()
-        } else {
-            self.next(attack, decay, sustain, release)
-        }
-    }
 }
 
 #[cfg(test)]
@@ -230,7 +212,7 @@ mod tests {
 
     // Helper function to run ADSR for a number of samples
     fn run_adsr_samples(
-        adsr: &mut MultiChannelAdsr,
+        adsr: &mut Adsr,
         samples: usize,
         attack: f32,
         decay: f32,
@@ -238,13 +220,13 @@ mod tests {
         release: f32,
     ) -> Vec<f32> {
         (0..samples)
-            .map(|_| adsr.next_value(attack, decay, sustain, release, true))
+            .map(|_| adsr.next(attack, decay, sustain, release))
             .collect()
     }
 
     #[test]
     fn test_initial_state() {
-        let adsr = MultiChannelAdsr::new(44100.0);
+        let adsr = Adsr::new(44100.0);
         assert_eq!(adsr.current_value, 0.0);
         assert!(matches!(adsr.stage, AdsrStage::Idle));
         assert!(adsr.is_idling());
@@ -252,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_normal_adsr_cycle() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         let attack = 0.1; // 0.1 seconds
         let decay = 0.05; // 0.05 seconds
         let sustain = 0.7;
@@ -318,18 +300,18 @@ mod tests {
 
     #[test]
     fn test_zero_attack() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // With zero attack, should immediately jump to decay
-        let value = adsr.next_value(0.0, 0.1, 0.5, 0.1, true);
+        let value = adsr.next(0.0, 0.1, 0.5, 0.1);
         assert!(matches!(adsr.stage, AdsrStage::Decay));
         assert_eq!(value, 1.0);
     }
 
     #[test]
     fn test_zero_decay() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Run through attack
@@ -343,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_zero_release() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Get to sustain phase
@@ -362,7 +344,7 @@ mod tests {
 
         // With zero release, should immediately go to idle
         adsr.note_off();
-        let value = adsr.next_value(0.1, 0.05, 0.5, 0.0, true);
+        let value = adsr.next(0.1, 0.05, 0.5, 0.0);
         assert!(matches!(adsr.stage, AdsrStage::Idle));
         assert_eq!(value, 0.0);
         assert!(adsr.is_idling());
@@ -370,66 +352,30 @@ mod tests {
 
     #[test]
     fn test_all_zero_times() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // All zero times - should go: Attack->Decay->Sustain in one sample
-        let _ = adsr.next_value(0.0, 0.0, 0.8, 0.0, true);
-        let value = adsr.next_value(0.0, 0.0, 0.8, 0.0, true);
+        let _ = adsr.next(0.0, 0.0, 0.8, 0.0);
+        let value = adsr.next(0.0, 0.0, 0.8, 0.0);
         assert!(matches!(adsr.stage, AdsrStage::Sustain));
         assert!((value - 0.8).abs() < 0.001);
 
         // Release should immediately finish
         adsr.note_off();
-        let value = adsr.next_value(0.0, 0.0, 0.8, 0.0, true);
+        let value = adsr.next(0.0, 0.0, 0.8, 0.0);
         assert!(matches!(adsr.stage, AdsrStage::Idle));
         assert_eq!(value, 0.0);
     }
 
     #[test]
-    fn test_extreme_sustain_values() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
-        adsr.note_on();
-
-        // Test sustain > 1.0
-        let attack_samples = (0.01 * 44100.0) as usize;
-        let decay_samples = (0.01 * 44100.0) as usize;
-        run_adsr_samples(
-            &mut adsr,
-            attack_samples + decay_samples + 2,
-            0.01,
-            0.01,
-            1.5,
-            0.1,
-        );
-
-        assert!(matches!(adsr.stage, AdsrStage::Sustain));
-        assert!((adsr.current_value - 1.5).abs() < 0.001);
-
-        // Test negative sustain
-        let mut adsr2 = MultiChannelAdsr::new(44100.0);
-        adsr2.note_on();
-        run_adsr_samples(
-            &mut adsr2,
-            attack_samples + decay_samples + 2,
-            0.01,
-            0.01,
-            -0.3,
-            0.1,
-        );
-
-        assert!(matches!(adsr2.stage, AdsrStage::Sustain));
-        assert!((adsr2.current_value - (-0.3)).abs() < 0.001);
-    }
-
-    #[test]
     fn test_very_long_stages() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Test very long attack (1000 seconds)
-        let value1 = adsr.next_value(1000.0, 0.1, 0.5, 0.1, true);
-        let value2 = adsr.next_value(1000.0, 0.1, 0.5, 0.1, true);
+        let value1 = adsr.next(1000.0, 0.1, 0.5, 0.1);
+        let value2 = adsr.next(1000.0, 0.1, 0.5, 0.1);
 
         // Should still be in attack and progressing very slowly
         assert!(matches!(adsr.stage, AdsrStage::Attack));
@@ -438,29 +384,12 @@ mod tests {
     }
 
     #[test]
-    fn test_multichannel_behavior() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
-        adsr.note_on();
-
-        // First channel should advance the state
-        let value1 = adsr.next_value(0.1, 0.1, 0.5, 0.1, true);
-        let stage_after_first = adsr.stage_progress;
-
-        // Second channel (same sample) should return same value without advancing
-        let value2 = adsr.next_value(0.1, 0.1, 0.5, 0.1, false);
-        let stage_after_second = adsr.stage_progress;
-
-        assert_eq!(value1, value2);
-        assert_eq!(stage_after_first, stage_after_second);
-    }
-
-    #[test]
     fn test_note_off_during_attack() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Start attack
-        adsr.next_value(0.2, 0.1, 0.5, 0.1, true);
+        adsr.next(0.2, 0.1, 0.5, 0.1);
         assert!(matches!(adsr.stage, AdsrStage::Attack));
 
         // Note off during attack - should go to release
@@ -471,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_note_off_during_decay() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Get to decay phase
@@ -487,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_note_off_when_idle() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
 
         // Note off when already idle - should stay idle
         adsr.note_off();
@@ -497,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_sample_rate_change() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
 
         // Change sample rate
         adsr.set_sample_rate(48000.0);
@@ -505,14 +434,14 @@ mod tests {
 
         // Test that it still works with new sample rate
         adsr.note_on();
-        let value = adsr.next_value(0.1, 0.1, 0.5, 0.1, true);
+        let value = adsr.next(0.1, 0.1, 0.5, 0.1);
         assert!(matches!(adsr.stage, AdsrStage::Attack));
         assert!(value >= 0.0);
     }
 
     #[test]
     fn test_attack_progression() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         let attack_time = 0.1; // 0.1 seconds
@@ -520,7 +449,7 @@ mod tests {
 
         let mut values = Vec::new();
         for _ in 0..expected_samples {
-            let value = adsr.next_value(attack_time, 0.1, 0.5, 0.1, true);
+            let value = adsr.next(attack_time, 0.1, 0.5, 0.1);
             values.push(value);
             if matches!(adsr.stage, AdsrStage::Decay) {
                 break;
@@ -541,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_decay_progression() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Get through attack quickly
@@ -554,7 +483,7 @@ mod tests {
         let decay_samples = (0.1 * 44100.0) as usize;
 
         for _ in 0..=decay_samples {
-            let value = adsr.next_value(0., 0.1, 0.3, 0.1, true);
+            let value = adsr.next(0., 0.1, 0.3, 0.1);
             values.push(value);
             if matches!(adsr.stage, AdsrStage::Sustain) {
                 break;
@@ -576,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_release_progression() {
-        let mut adsr = MultiChannelAdsr::new(44100.0);
+        let mut adsr = Adsr::new(44100.0);
         adsr.note_on();
 
         // Get to sustain phase
@@ -600,7 +529,7 @@ mod tests {
         let release_samples = (0.1 * 44100.0) as usize;
 
         for _ in 0..release_samples + 1 {
-            let value = adsr.next_value(0.01, 0.01, 0.7, 0.1, true);
+            let value = adsr.next(0.01, 0.01, 0.7, 0.1);
             values.push(value);
             if matches!(adsr.stage, AdsrStage::Idle) {
                 break;

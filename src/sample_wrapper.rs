@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use nih_plug::buffer::Buffer;
 use nih_plug::{nih_error, nih_log};
 
-use crate::adsr::MultiChannelAdsr;
+use crate::adsr::Adsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
 use crate::pitch_shift::classic::ClassicShifter;
 use crate::pitch_shift::psola::PsolaShifter;
@@ -56,7 +56,7 @@ pub struct SamplePlayer {
     sample_channels: usize,
 
     /// The adsr envelope
-    adsr: MultiChannelAdsr,
+    adsr: Adsr,
 
     /// For PSOLA
     pitch_shifter: Box<dyn PitchShifter + Send>,
@@ -105,7 +105,7 @@ impl SamplePlayer {
             midi_note: None,
             host_channels: 0,
             sample_channels: 0,
-            adsr: MultiChannelAdsr::new(DEFAULT_SAMPLE_RATE),
+            adsr: Adsr::new(DEFAULT_SAMPLE_RATE),
             pitch_shifter: Box::new(ClassicShifter::new()),
 
             // THINGS FOR GUI
@@ -467,7 +467,7 @@ impl SamplePlayer {
             .map(|(i, sample)| (i as f32 + process_count, sample))
         {
             // Get the adrs value
-            let adrs_envelope = self.adsr.next_value(attack, decay, sustain, release, true);
+            let adrs_envelope = self.adsr.next(attack, decay, sustain, release);
             let offset_position = utils::optional_positive_sub(position, start_offset);
 
             if let Some(data) = offset_position.and_then(|pos| self.pitch_shifter.get_frame(pos)) {
