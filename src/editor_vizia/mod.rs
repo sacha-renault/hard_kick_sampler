@@ -371,7 +371,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     );
 
                     // Make waveform
-                    widgets::Waveform::new(cx, final_data)
+                    widgets::WavePlot::new(cx, final_data)
                         .outline_width(Pixels(1.0))
                         .class("waveform-canvas");
 
@@ -380,7 +380,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         Data::states.map(move |st| st.positions[index].load(Ordering::Relaxed)),
                         move |cx, position| {
                             let pos = position.get(cx) as f32 / num_frames as f32;
-                            widgets::Waveform::new(cx, vec![[pos, -1.], [pos, 1.]])
+                            widgets::WavePlot::new(cx, vec![[pos, -1.], [pos, 1.]])
                                 .outline_width(Pixels(2.0))
                                 .class("time-indicator");
                         },

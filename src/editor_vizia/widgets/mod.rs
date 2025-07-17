@@ -7,5 +7,5 @@ pub mod waveform;
 
 pub use {
     drag_to_change::ParamDragNumber, knob::ParamKnob, panel::WidgetPanel, radio::ParamRadio,
-    toggle::ParamSwitch, waveform::Waveform,
+    toggle::ParamSwitch, waveform::WavePlot,
 };

@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 use nih_plug::buffer::Buffer;
-use nih_plug::nih_error;
+use nih_plug::{nih_error, nih_log};
 
 use crate::adsr::MultiChannelAdsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
@@ -139,6 +139,16 @@ impl SamplePlayer {
             let playback_rate = self.get_playback_rate();
             let sr_correction = self.get_sr_correction();
             self.pitch_shifter.trigger(sr_correction, playback_rate);
+
+            // log start playing
+            nih_log!(
+                "{} - Note playing : {} (with base note offset {}) / Playback rate : {} / sr correction {}",
+                self.index,
+                note,
+                semitone_offset,
+                playback_rate,
+                sr_correction
+            );
         }
     }
 
@@ -160,6 +170,7 @@ impl SamplePlayer {
     pub fn change_sample_rate_output(&mut self, sample_rate: f32) {
         self.host_sample_rate = sample_rate;
         self.adsr.set_sample_rate(sample_rate);
+        nih_log!("Set new host sample rate : {}", sample_rate);
     }
 
     /// Sets the number of output channels for proper buffer indexing.
@@ -169,6 +180,7 @@ impl SamplePlayer {
     /// * `num_channel` - Number of output channels (1=mono, 2=stereo, etc.)
     pub fn change_channel_number(&mut self, num_channel: usize) {
         self.host_channels = num_channel;
+        nih_log!("Set new host number of channel : {}", num_channel);
     }
 
     /// Sets the sample file path in the parameters.
@@ -393,6 +405,7 @@ impl SamplePlayer {
         self.adsr.is_idling() || self.is_muted() || self.buffer.is_none()
     }
 
+    #[inline]
     pub fn process(&mut self, buffer: &mut Buffer, process_count: f32) {
         if self.is_silent() {
             return;
@@ -402,6 +415,12 @@ impl SamplePlayer {
         let current_kind = self.pitch_shifter.kind();
 
         if current_kind != desired_kind || !self.pitch_shifter.ready() {
+            nih_log!(
+                "Changing pitch shifter ! {:?} != {:?} and ready : {} ?",
+                current_kind,
+                desired_kind,
+                self.pitch_shifter.ready()
+            );
             if let Some(buffer) = self.buffer.as_ref() {
                 self.pitch_shifter = match self.get_params().pitch_shift_kind.value() {
                     PitchShiftKind::Classic => Box::new(ClassicShifter::new()),
@@ -422,6 +441,7 @@ impl SamplePlayer {
         self.process_buffer(buffer, process_count)
     }
 
+    #[inline]
     fn process_buffer(&mut self, buffer: &mut Buffer, process_count: f32) {
         let params = self.get_params();
 

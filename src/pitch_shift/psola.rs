@@ -1,3 +1,4 @@
+use nih_plug::nih_error;
 use pitch_detection::detector::mcleod::McLeodDetector;
 use pitch_detection::detector::PitchDetector;
 use tdpsola::{AlternatingHann, Speed, TdpsolaAnalysis, TdpsolaSynthesis};
@@ -94,7 +95,9 @@ impl PitchShifter for PsolaShifter {
     }
 
     fn load_sample(&mut self, sample_buffer: &[f32], channel_number: usize, sample_rate: f32) {
-        self.build_internal(sample_buffer, channel_number, sample_rate);
+        if !self.build_internal(sample_buffer, channel_number, sample_rate) {
+            nih_error!("Error while setting up pitch shifter {:?}", self.kind());
+        }
     }
 
     fn trigger(&mut self, sr_correction: f32, playback_rate: f32) {
