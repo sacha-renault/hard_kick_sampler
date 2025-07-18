@@ -12,7 +12,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
-use crate::editor_vizia::widgets::knob::ParamKnobModifiers;
+use crate::editor_vizia::widgets::knob::ParamKnobBuilder;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -166,10 +166,11 @@ fn create_second_panel_row(cx: &mut Context, index: usize) {
         })
         .width(Stretch(0.5));
         widgets::WidgetPanel::new(cx, "Time Control", |cx| {
-            widgets::ParamKnob::new(cx, Data::states, move |st| {
-                &get_param(st, index).start_offset
-            })
-            .with_centered(true);
+            widgets::ParamKnob::builder()
+                .centered()
+                .build(cx, Data::states, move |st| {
+                    &get_param(st, index).start_offset
+                });
         })
         .width(Stretch(0.25));
         widgets::WidgetPanel::new(cx, "Gain", |cx| {
