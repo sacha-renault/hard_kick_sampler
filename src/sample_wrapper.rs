@@ -19,9 +19,6 @@ const BASE_NOTE: u8 = 60;
 /// Default sample rate used for initialization
 const DEFAULT_SAMPLE_RATE: f32 = 48000.;
 
-/// Number of semitone in one octave
-const SEMITONE_PER_OCTAVE: f32 = 12.;
-
 /// A multi-channel audio sample player with pitch shifting, ADSR envelope, and real-time parameter control.
 ///
 /// `SampleWrapper` handles loading and playback of audio samples with support for:
@@ -136,9 +133,9 @@ impl SamplePlayer {
             self.adsr.note_on();
 
             // Trigger the shifters
-            let playback_rate = self.get_playback_rate();
+            let semitone_offset = self.get_semitone_offset();
             let sr_correction = self.get_sr_correction();
-            self.pitch_shifter.trigger(sr_correction, playback_rate);
+            self.pitch_shifter.trigger(sr_correction, semitone_offset);
 
             // log start playing
             nih_log!(
@@ -146,7 +143,7 @@ impl SamplePlayer {
                 self.index,
                 utils::semitones_to_note(note as i32),
                 semitone_offset,
-                playback_rate,
+                semitone_offset,
                 sr_correction
             );
         }
@@ -315,19 +312,15 @@ impl SamplePlayer {
         Ok(())
     }
 
-    /// Calculates the current playback rate based on pitch shifting parameters.
+    /// Calculates the current semitone offset.
     ///
-    /// The playback rate is calculated using the formula: `2^(semitone_offset / 12)`
-    /// where semitone_offset combines:
+    /// semitone_offset combines:
     /// - Semitone offset parameter (user fine tuning adjustment)
     /// - MIDI note offset from root note (if tonal mode is enabled)
     ///
     /// If `is_tonal` parameter is false, MIDI note AND the root note has no influence on pitch.
-    ///
-    /// Returns a multiplier where 1.0 = original speed, 2.0 = double speed (octave up),
-    /// 0.5 = half speed (octave down).
     #[inline]
-    pub fn get_playback_rate(&self) -> f32 {
+    pub fn get_semitone_offset(&self) -> f32 {
         // Cache params
         let params = self.get_params();
 
@@ -343,8 +336,7 @@ impl SamplePlayer {
             0.
         };
 
-        let final_offset = param_note_offset + midi_note_offset;
-        2.0_f32.powf(final_offset / SEMITONE_PER_OCTAVE)
+        param_note_offset + midi_note_offset
     }
 
     /// Returns the sample rate correction factor.
@@ -431,9 +423,10 @@ impl SamplePlayer {
 
                 // If there is a note running, we can trigger!
                 if self.midi_note.is_some() {
-                    let playback_rate = self.get_playback_rate();
+                    let get_semitone_offset = self.get_semitone_offset();
                     let sr_correction = self.get_sr_correction();
-                    self.pitch_shifter.trigger(sr_correction, playback_rate);
+                    self.pitch_shifter
+                        .trigger(sr_correction, get_semitone_offset);
                 }
             }
         }

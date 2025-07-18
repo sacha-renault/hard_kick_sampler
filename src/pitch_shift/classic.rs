@@ -54,9 +54,9 @@ impl PitchShifter for ClassicShifter {
         self.is_loaded = true;
     }
 
-    fn trigger(&mut self, sr_correction: f32, playback_rate: f32) {
+    fn trigger(&mut self, sr_correction: f32, semitone_offset: f32) {
         self.sr_correction = sr_correction;
-        self.playback_rate = playback_rate;
+        self.playback_rate = utils::semitone_offset_to_playback_rate(semitone_offset);
     }
 
     fn ready(&self) -> bool {

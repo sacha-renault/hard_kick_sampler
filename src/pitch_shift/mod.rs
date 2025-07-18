@@ -60,7 +60,7 @@ pub trait PitchShifter {
     /// # Parameters
     ///
     /// * `sr_correction` - Sample rate correction factor (original_rate / host_rate)
-    /// * `playback_rate` - Pitch shift factor (2.0 = up one octave, 0.5 = down one octave)
+    /// * `get_semitone_offset` - Number of semitone to shift
     ///
     /// # Sample Rate Correction
     ///
@@ -77,7 +77,7 @@ pub trait PitchShifter {
     ///
     /// # Playback Rate
     ///
-    /// The `playback_rate` parameter controls pitch shifting:
+    /// The `get_semitone_offset` parameter controls pitch shifting:
     ///
     /// ```text
     /// playback_rate = 2^(semitones / 12)
@@ -93,7 +93,7 @@ pub trait PitchShifter {
     /// - A sample must be loaded before calling this method
     /// - After triggering, `ready()` should return `true` if successful
     /// - Can be called multiple times to retrigger with different parameters
-    fn trigger(&mut self, sr_correction: f32, playback_rate: f32);
+    fn trigger(&mut self, sr_correction: f32, get_semitone_offset: f32);
 
     /// Returns whether the shifter is ready to generate output frames.
     ///

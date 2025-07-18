@@ -292,3 +292,9 @@ pub fn downsample_lttb(data: &[[f32; 2]], target_points: usize) -> Vec<[f32; 2]>
     result.push(data[data.len() - 1]);
     result
 }
+
+pub fn semitone_offset_to_playback_rate(semitone_offset: f32) -> f32 {
+    /// Number of semitone in one octave
+    const SEMITONE_PER_OCTAVE: f32 = 12.;
+    2.0_f32.powf(semitone_offset / SEMITONE_PER_OCTAVE)
+}

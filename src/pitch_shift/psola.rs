@@ -3,7 +3,10 @@ use pitch_detection::detector::mcleod::McLeodDetector;
 use pitch_detection::detector::PitchDetector;
 use tdpsola::{AlternatingHann, Speed, TdpsolaAnalysis, TdpsolaSynthesis};
 
-use crate::pitch_shift::{PitchShiftKind, PitchShifter};
+use crate::{
+    pitch_shift::{PitchShiftKind, PitchShifter},
+    utils,
+};
 
 const POWER_THRESHOLD: f32 = 5.0;
 const CLARITY_THRESHOLD: f32 = 0.1;
@@ -105,12 +108,12 @@ impl PitchShifter for PsolaShifter {
         }
     }
 
-    fn trigger(&mut self, sr_correction: f32, playback_rate: f32) {
+    fn trigger(&mut self, sr_correction: f32, semitone_offset: f32) {
         if !self.is_loaded {
             return;
         }
 
-        self.playback_rate = playback_rate;
+        self.playback_rate = utils::semitone_offset_to_playback_rate(semitone_offset);
         self.sr_correction = sr_correction;
 
         // Create NEW synthesis objects each time - analysis stays intact!
@@ -118,7 +121,7 @@ impl PitchShifter for PsolaShifter {
             .map(|_| {
                 TdpsolaSynthesis::new(
                     Speed::from_f32(sr_correction),
-                    self.source_length / playback_rate,
+                    self.source_length / self.playback_rate,
                 )
             })
             .collect();
