@@ -416,24 +416,42 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         .map(move |st| st.params.blend_time.value() * sr / num_frames as f32);
                     let blend_transition = Data::states
                         .map(move |st| st.params.blend_transition.value() * sr / num_frames as f32);
-                    let visibility_binding =
-                        Data::is_dragging_blend
-                            .map(|v| *v)
-                            .and(Data::states.map(move |st| {
-                                !matches!(
-                                    get_param(st, index).blend_group.value(),
-                                    BlendGroup::None
-                                )
-                            }));
+                    let visibility_binding = Data::is_dragging_blend
+                        .map(|v| *v)
+                        .or(Data::states.map(move |st| get_param(st, index).show_blend.value()))
+                        .and(Data::states.map(move |st| {
+                            !matches!(get_param(st, index).blend_group.value(), BlendGroup::None)
+                        }));
                     customs::blend::BlendVizualizer::new(cx, blend_time, blend_transition)
                         .visibility(visibility_binding);
 
                     // A Container that has button !
                     HStack::new(cx, |cx| {
-                        Icon::new(cx, ICON_123);
-                        Icon::new(cx, ICON_123);
-                        Icon::new(cx, ICON_123);
+                        widgets::ButtonToggle::builder()
+                            .with_text("")
+                            .with_icon(ICON_123)
+                            .build(cx, Data::states, move |st| {
+                                &get_param(st, index).show_indicator
+                            })
+                            .width(Auto)
+                            .height(Auto)
+                            .class("mute-toggle");
+                        widgets::ButtonToggle::builder()
+                            .with_text("")
+                            .with_icon(ICON_123)
+                            .build(cx, Data::states, move |st| &get_param(st, index).show_blend)
+                            .width(Auto)
+                            .height(Auto)
+                            .class("mute-toggle");
+                        widgets::ButtonToggle::builder()
+                            .with_text("")
+                            .with_icon(ICON_123)
+                            .build(cx, Data::states, move |st| &get_param(st, index).show_adsr)
+                            .width(Auto)
+                            .height(Auto)
+                            .class("mute-toggle");
                     })
+                    .col_between(Pixels(8.))
                     .left(Stretch(1.0))
                     .top(Pixels(PANEL_PADDING))
                     .right(Pixels(PANEL_PADDING))

@@ -51,6 +51,16 @@ pub struct SamplePlayerParams {
 
     #[id = "pitch_shift_kind"]
     pub pitch_shift_kind: EnumParam<PitchShiftKind>,
+
+    // For gui
+    #[id = "show_blend"]
+    pub show_blend: BoolParam,
+
+    #[id = "show_indicator"]
+    pub show_indicator: BoolParam,
+
+    #[id = "show_adsr"]
+    pub show_adsr: BoolParam,
 }
 
 impl Default for SamplePlayerParams {
@@ -165,6 +175,12 @@ impl Default for SamplePlayerParams {
             ),
 
             blend_group: EnumParam::<BlendGroup>::new("Blend Group", BlendGroup::None),
+
+            show_blend: BoolParam::new("Show blend", false),
+
+            show_adsr: BoolParam::new("Show adsr", true),
+
+            show_indicator: BoolParam::new("Show indicator", false),
         }
     }
 }
