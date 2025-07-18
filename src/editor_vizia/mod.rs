@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use cyma::prelude::*;
 use nih_plug::prelude::*;
+use nih_plug_vizia::vizia::icons::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
@@ -106,18 +107,24 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
     // First panel row - equal height
     HStack::new(cx, |cx| {
         widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
-            widgets::ParamSwitch::new(cx, Data::states, move |st| &get_param(st, index).is_tonal);
-
             HStack::new(cx, |cx| {
-                widgets::ParamDragNumber::new(cx, Data::states, move |st| {
-                    &get_param(st, index).root_note
-                })
-                .class("root-note-select")
-                .disabled(Data::states.map(move |st| !get_param(st, index).is_tonal.value()));
+                widgets::ButtonToggle::new(
+                    cx,
+                    ICON_WAVE_SAW_TOOL.into(),
+                    Data::states,
+                    move |st| &get_param(st, index).is_tonal,
+                );
+
                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
                     &get_param(st, index).semitone_offset
                 });
             });
+
+            widgets::ParamDragNumber::new(cx, Data::states, move |st| {
+                &get_param(st, index).root_note
+            })
+            .class("root-note-select")
+            .disabled(Data::states.map(move |st| !get_param(st, index).is_tonal.value()));
         })
         .width(Stretch(0.3));
         widgets::WidgetPanel::new(cx, "Pitch Algorithm", |cx| {
@@ -218,10 +225,11 @@ fn create_sample_info_strip(cx: &mut Context, index: usize) {
     // The bar for selecting sample ... etc
     HStack::new(cx, |cx| {
         // Button for mute / unmute
-        widgets::ParamSwitch::new(cx, Data::states, move |st| &get_param(st, index).muted)
-            .width(Stretch(1.0))
-            .top(Stretch(1.0))
-            .bottom(Stretch(1.0));
+        widgets::ButtonToggle::new(cx, ICON_WAVE_SAW_TOOL.into(), Data::states, move |st| {
+            &get_param(st, index).muted
+        })
+        .width(Stretch(1.0))
+        .class("mute-toggle");
 
         // Sample Name
         Label::new(
@@ -277,7 +285,7 @@ fn create_button_group(
                     cx.emit(AppEvent::FileLoading(index, path));
                 }
             },
-            |cx| Label::new(cx, "<"),
+            |cx| Icon::new(cx, ICON_ARROW_BEAR_LEFT),
         )
         .disabled(previous_file.map(|v| v.is_none()));
         Button::new(
@@ -287,7 +295,7 @@ fn create_button_group(
                     cx.emit(AppEvent::FileLoading(index, path));
                 }
             },
-            |cx| Label::new(cx, ">"),
+            |cx| Icon::new(cx, ICON_ARROW_BEAR_RIGHT),
         )
         .disabled(next_file.map(|v| v.is_none()));
         Button::new(
@@ -371,9 +379,15 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     );
 
                     // Make waveform
-                    widgets::StaticWavePlot::new(cx, final_data)
-                        .outline_width(Pixels(1.0))
-                        .class("waveform-canvas");
+                    let disabled_binding =
+                        Data::states.map(move |st| get_param(st, index).muted.value());
+                    Binding::new(cx, disabled_binding, move |cx, disabled| {
+                        let disabled = disabled.get(cx);
+                        widgets::StaticWavePlot::new(cx, final_data.clone())
+                            .outline_width(Pixels(1.0))
+                            .disabled(disabled)
+                            .class("waveform-canvas");
+                    });
 
                     // Time indicator
                     customs::neon_indicator(

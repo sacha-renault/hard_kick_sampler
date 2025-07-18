@@ -132,3 +132,40 @@ button.selected {
 .waveform-canvas {
     color: var(--text-primary)
 }
+
+.waveform-canvas:disabled {
+    color: var(--disabled-color)
+}
+
+/* MUTE BASE */
+.toggle-container label,
+.toggle-container {
+    color: var(--text-primary);
+}
+
+.toggle-container:checked label,
+.toggle-container:checked {
+    color: var(--primary-color);
+}
+
+button.toggle-container {
+    transition: border 100ms;
+    border: 1px var(--text-primary) solid;
+    border-radius: 4px;
+}
+
+button.toggle-container:checked {
+    transition: border 100ms;
+    border: 1px var(--primary-color) solid;
+}
+
+/* MUTE TOGGLE */
+.mute-toggle .toggle-container:checked label,
+.mute-toggle .toggle-container:checked {
+    color: var(--secondary-color);
+}
+
+.mute-toggle button.toggle-container:checked {
+    transition: border 100ms;
+    border: 1px var(--secondary-color) solid;
+}

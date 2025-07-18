@@ -162,7 +162,7 @@ impl View for StaticWavePlot {
     }
 
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        event.map(|window_event, _| match window_event {
+        event.map(|window_event: &WindowEvent, _| match window_event {
             WindowEvent::GeometryChanged(_) => {
                 self.invalidate_texture();
                 cx.needs_redraw();
