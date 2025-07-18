@@ -15,6 +15,7 @@ use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
 use crate::editor_vizia::events::SetDraggingBlend;
 use crate::editor_vizia::widgets::widget_base::ParamWidget;
+use crate::params::BlendGroup;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -152,14 +153,23 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
         })
         .width(Stretch(0.2));
         widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
+            // Create a binding to disabled on blend group = None
+            let no_blend = Data::states.map(move |st| {
+                matches!(get_param(st, index).blend_group.value(), BlendGroup::None)
+            });
+
             widgets::ParamKnob::builder()
                 .on_drag_start(|cx| cx.emit(SetDraggingBlend(true)))
                 .on_drag_end(|cx| cx.emit(SetDraggingBlend(false)))
-                .build(cx, Data::states, move |st| &st.params.blend_time);
+                .with_label("Time")
+                .build(cx, Data::states, move |st| &st.params.blend_time)
+                .disabled(no_blend);
             widgets::ParamKnob::builder()
                 .on_drag_start(|cx| cx.emit(SetDraggingBlend(true)))
                 .on_drag_end(|cx| cx.emit(SetDraggingBlend(false)))
-                .build(cx, Data::states, move |st| &st.params.blend_transition);
+                .with_label("Transition")
+                .build(cx, Data::states, move |st| &st.params.blend_transition)
+                .disabled(no_blend);
         })
         .width(Stretch(0.3));
     })
@@ -406,8 +416,17 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         .map(move |st| st.params.blend_time.value() * sr / num_frames as f32);
                     let blend_transition = Data::states
                         .map(move |st| st.params.blend_transition.value() * sr / num_frames as f32);
+                    let visibility_binding =
+                        Data::is_dragging_blend
+                            .map(|v| *v)
+                            .and(Data::states.map(move |st| {
+                                !matches!(
+                                    get_param(st, index).blend_group.value(),
+                                    BlendGroup::None
+                                )
+                            }));
                     customs::blend::BlendVizualizer::new(cx, blend_time, blend_transition)
-                        .visibility(Data::is_dragging_blend);
+                        .visibility(visibility_binding);
 
                     // A Container that has button !
                     HStack::new(cx, |cx| {
