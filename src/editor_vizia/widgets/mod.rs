@@ -6,6 +6,7 @@ pub mod panel;
 pub mod radio;
 pub mod switch;
 pub mod waveform;
+pub mod widget_base;
 
 pub use {
     drag_to_change::ParamDragNumber, grid::StaticGridLines, icon_button_toggle::ButtonToggle,

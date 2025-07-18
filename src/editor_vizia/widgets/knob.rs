@@ -2,6 +2,8 @@ use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 
+use super::widget_base::*;
+
 #[derive(Clone, Default)]
 pub struct ParamKnobBuilder {
     centered: bool,
@@ -30,25 +32,10 @@ impl ParamKnobBuilder {
         self.hide_value = true;
         self
     }
+}
 
-    pub fn build<L, Params, P, FMap>(
-        self,
-        cx: &mut Context,
-        params: L,
-        params_to_param: FMap,
-    ) -> Handle<ParamKnob>
-    where
-        L: Lens<Target = Params> + Clone,
-        Params: 'static,
-        P: Param + 'static,
-        FMap: Fn(&Params) -> &P + Copy + 'static,
-    {
-        ParamKnob {
-            param_base: ParamWidgetBase::new(cx, params.clone(), params_to_param),
-            modifiers: self,
-        }
-        .inner_build(cx, params, params_to_param)
-    }
+impl ParamWidgetBuilder for ParamKnobBuilder {
+    type Widget = ParamKnob;
 }
 
 #[derive(Lens)]
@@ -57,15 +44,18 @@ pub struct ParamKnob {
     modifiers: ParamKnobBuilder,
 }
 
-impl ParamKnob {
-    pub fn builder() -> ParamKnobBuilder {
-        ParamKnobBuilder::default()
+impl ParamWidget for ParamKnob {
+    type Builder = ParamKnobBuilder;
+
+    fn param_base(&self) -> &ParamWidgetBase {
+        &self.param_base
     }
 
-    pub fn new<L, Params, P, FMap>(
+    fn new_from_builder<L, Params, P, FMap>(
         cx: &mut Context,
         params: L,
         params_to_param: FMap,
+        builder: ParamKnobBuilder,
     ) -> Handle<Self>
     where
         L: Lens<Target = Params> + Clone,
@@ -75,24 +65,9 @@ impl ParamKnob {
     {
         Self {
             param_base: ParamWidgetBase::new(cx, params.clone(), params_to_param),
-            modifiers: ParamKnobBuilder::default(),
+            modifiers: builder,
         }
-        .inner_build(cx, params, params_to_param)
-    }
-
-    fn inner_build<L, Params, P, FMap>(
-        self,
-        cx: &mut Context,
-        params: L,
-        params_to_param: FMap,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Params> + Clone,
-        Params: 'static,
-        P: Param + 'static,
-        FMap: Fn(&Params) -> &P + Copy + 'static,
-    {
-        self.build(
+        .build(
             cx,
             ParamWidgetBase::build_view(params, params_to_param, move |cx, param_data| {
                 VStack::new(cx, |cx| {
@@ -115,7 +90,7 @@ impl ParamKnob {
                         modifiers.centered,
                     )
                     .on_changing(|cx, val| {
-                        cx.emit(KnobChangeEvent(val));
+                        cx.emit(NormalizedParamUpdate(val));
                     });
 
                     if !modifiers.hide_value {
@@ -135,19 +110,12 @@ impl ParamKnob {
     }
 }
 
-struct KnobChangeEvent(f32);
-
 impl View for ParamKnob {
     fn element(&self) -> Option<&'static str> {
         Some("param-knob")
     }
 
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        event.map(|knob_event: &KnobChangeEvent, meta| {
-            self.param_base.begin_set_parameter(cx);
-            self.param_base.set_normalized_value(cx, knob_event.0);
-            self.param_base.end_set_parameter(cx);
-            meta.consume();
-        });
+        self.handle_param_event(cx, event);
     }
 }

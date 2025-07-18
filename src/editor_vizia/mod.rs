@@ -12,13 +12,14 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
-use crate::editor_vizia::widgets::knob::ParamKnobBuilder;
+use crate::editor_vizia::widgets::widget_base::ParamWidget;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
 use crate::tasks::{TaskRequests, TaskResults};
 use crate::utils;
 use style::*;
+use widgets::widget_base::*;
 
 pub enum AppEvent {
     SelectSample(usize),
