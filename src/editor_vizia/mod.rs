@@ -109,12 +109,9 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
     HStack::new(cx, |cx| {
         widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
             HStack::new(cx, |cx| {
-                widgets::ButtonToggle::new(
-                    cx,
-                    ICON_WAVE_SAW_TOOL.into(),
-                    Data::states,
-                    move |st| &get_param(st, index).is_tonal,
-                );
+                widgets::ButtonToggle::builder()
+                    .with_icon(ICON_WAVE_SAW_TOOL)
+                    .build(cx, Data::states, move |st| &get_param(st, index).is_tonal);
 
                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
                     &get_param(st, index).semitone_offset
@@ -213,11 +210,11 @@ fn create_sample_info_strip(cx: &mut Context, index: usize) {
     // The bar for selecting sample ... etc
     HStack::new(cx, |cx| {
         // Button for mute / unmute
-        widgets::ButtonToggle::new(cx, ICON_WAVE_SAW_TOOL.into(), Data::states, move |st| {
-            &get_param(st, index).muted
-        })
-        .width(Stretch(1.0))
-        .class("mute-toggle");
+        widgets::ButtonToggle::builder()
+            .with_icon(ICON_WAVE_SAW_TOOL)
+            .build(cx, Data::states, move |st| &get_param(st, index).muted)
+            .width(Stretch(1.0))
+            .class("mute-toggle");
 
         // Sample Name
         Label::new(
