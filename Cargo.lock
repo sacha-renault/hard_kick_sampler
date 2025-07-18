@@ -976,19 +976,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cyma"
-version = "0.2.0"
-source = "git+https://github.com/exa04/cyma#3327012ad7c802d6abb3c006ffea584d2c5966da"
-dependencies = [
- "crossbeam-channel",
- "lazy_static",
- "nih_plug",
- "nih_plug_vizia",
- "realfft",
- "triple_buffer",
-]
-
-[[package]]
 name = "deranged"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1598,7 +1585,6 @@ name = "hard_kick_sampler"
 version = "0.1.0"
 dependencies = [
  "css_var_resolver",
- "cyma",
  "derive_more 2.0.1",
  "hound",
  "nih_plug",
@@ -2912,15 +2898,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "realfft"
-version = "3.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f821338fddb99d089116342c46e9f1fbf3828dba077674613e734e01d6ea8677"
-dependencies = [
- "rustfft",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3577,15 +3554,6 @@ checksum = "1ad61aed86bc3faea4300c7aee358b4c6d0c8d6ccc36524c96e4c92ccf26e77e"
 dependencies = [
  "num-integer",
  "strength_reduce",
-]
-
-[[package]]
-name = "triple_buffer"
-version = "7.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "316e1ab00252ce5980b8a70eb50f9818f47a20d341394c56ffab88e764b3caed"
-dependencies = [
- "crossbeam-utils",
 ]
 
 [[package]]

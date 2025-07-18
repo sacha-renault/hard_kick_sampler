@@ -6,13 +6,13 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-use cyma::prelude::*;
 use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::icons::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
+use crate::editor_vizia::widgets::knob::ParamKnobModifiers;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
 use crate::shared_states::SharedStates;
@@ -146,10 +146,8 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
         })
         .width(Stretch(0.2));
         widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| &st.params.blend_time);
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                &st.params.blend_transition
-            });
+            widgets::ParamKnob::new(cx, Data::states, move |st| &st.params.blend_time);
+            widgets::ParamKnob::new(cx, Data::states, move |st| &st.params.blend_transition);
         })
         .width(Stretch(0.3));
     })
@@ -161,33 +159,21 @@ fn create_second_panel_row(cx: &mut Context, index: usize) {
     // Second panel row - equal height
     HStack::new(cx, |cx| {
         widgets::WidgetPanel::new(cx, "ADSR", |cx| {
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                &get_param(st, index).attack
-            });
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                &get_param(st, index).decay
-            });
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                &get_param(st, index).sustain
-            });
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                &get_param(st, index).release
-            });
+            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).attack);
+            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).decay);
+            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).sustain);
+            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).release);
         })
         .width(Stretch(0.5));
         widgets::WidgetPanel::new(cx, "Time Control", |cx| {
-            widgets::ParamKnob::new(
-                cx,
-                Data::states,
-                move |st| &get_param(st, index).start_offset,
-                true,
-            );
+            widgets::ParamKnob::new(cx, Data::states, move |st| {
+                &get_param(st, index).start_offset
+            })
+            .with_centered(true);
         })
         .width(Stretch(0.25));
         widgets::WidgetPanel::new(cx, "Gain", |cx| {
-            widgets::ParamKnob::new_left_align(cx, Data::states, move |st| {
-                &get_param(st, index).gain
-            });
+            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).gain);
         })
         .width(Stretch(0.25));
     })
@@ -333,29 +319,15 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
             if let Some(audio_data) = buffer {
                 ZStack::new(cx, |cx| {
                     // background canvas
-                    Grid::new(
+                    widgets::StaticGridLines::new(
                         cx,
-                        ValueScaling::Linear,
-                        (-1., 1.),
-                        vec![0.],
+                        (1..=3).map(|v| v as f32 / 4.).collect(),
                         Orientation::Horizontal,
-                    );
-
-                    Grid::new(
-                        cx,
-                        ValueScaling::Linear,
-                        (0., 1.5),
-                        vec![1.],
-                        Orientation::Vertical,
-                    );
-
-                    // Grid::new(
-                    //     cx,
-                    //     ValueScaling::Linear,
-                    //     (0., 1.5),
-                    //     vec![0.25, 0.5, 0.75, 1.25],
-                    //     Orientation::Vertical,
-                    // );
+                    )
+                    .outline_width(Length::px(1.0));
+                    widgets::StaticGridLines::new(cx, vec![2. / 3.], Orientation::Vertical)
+                        .outline_width(Length::px(1.0))
+                        .color(Color::green());
 
                     // First, we have to know how many frame we wanna display
                     let bpm = Data::states.get(cx).host_bpm.load(Ordering::Relaxed);
@@ -384,7 +356,6 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     Binding::new(cx, disabled_binding, move |cx, disabled| {
                         let disabled = disabled.get(cx);
                         widgets::StaticWavePlot::new(cx, final_data.clone())
-                            .outline_width(Pixels(1.0))
                             .disabled(disabled)
                             .class("waveform-canvas");
                     });
