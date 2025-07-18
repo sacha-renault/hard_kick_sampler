@@ -378,7 +378,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     let (_, start_offset) = new_value.get(cx);
 
                     // calc sum
-                    let num_frames = customs::get_num_displayed_frames(1.5, sr, bpm);
+                    let num_frames = customs::get_num_displayed_frames(1., sr, bpm);
                     let num_channels = audio_data.spec.channels as usize;
 
                     // Waveform canvas
@@ -439,7 +439,8 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     .right(Pixels(PANEL_PADDING))
                     .width(Auto)
                     .height(Auto)
-                    .class("widget-panel");
+                    .class("widget-panel")
+                    .class("button-group");
                 });
             }
         })

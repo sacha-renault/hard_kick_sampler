@@ -43,6 +43,11 @@ button.selected {
     box-shadow: 0 2px 8px var(--shadow-alpha-22);
 }
 
+.button-group {
+    background-color: var(--background-secondary)77;
+    backdrop-filter: blur(2px);
+}
+
 .widget-panel .panel-title {
     color: var(--text-accent);
     font-weight: 600;
