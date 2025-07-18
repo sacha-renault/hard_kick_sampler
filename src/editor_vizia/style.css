@@ -170,3 +170,15 @@ button.toggle-container:checked {
     transition: border 100ms;
     border: 1px var(--secondary-color) solid;
 }
+
+.grid-main {
+    outline-width: 1px;
+    color: var(--surface-elevated)aa;
+}
+
+.grid-secondary {
+    outline-width: 0.5px;
+
+    /* Small hack, the css preprocessor let us do that hehe */
+    color: var(--surface-elevated)55;
+}

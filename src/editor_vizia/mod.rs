@@ -296,6 +296,34 @@ fn create_button_group(
     .width(Stretch(1.0));
 }
 
+fn create_grid(cx: &mut Context) {
+    widgets::StaticGridLines::new(
+        cx,
+        (1..4).map(|v| v as f32 / 4.).collect(),
+        Orientation::Horizontal,
+    )
+    .class("grid-main");
+    widgets::StaticGridLines::new(
+        cx,
+        (1..3).map(|v| v as f32 / 3.).collect(),
+        Orientation::Vertical,
+    )
+    .class("grid-main");
+
+    widgets::StaticGridLines::new(
+        cx,
+        (1..5).map(|v| -1. / 8. + v as f32 / 4.).collect(),
+        Orientation::Horizontal,
+    )
+    .class("grid-secondary");
+    widgets::StaticGridLines::new(
+        cx,
+        (1..4).map(|v| -1. / 6. + v as f32 / 3.).collect(),
+        Orientation::Vertical,
+    )
+    .class("grid-secondary");
+}
+
 fn create_waveform_section(cx: &mut Context, index: usize) {
     // Make a special length for the waveshape
     let binding_lens = Data::states.map(move |st| {
@@ -318,15 +346,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
             if let Some(audio_data) = buffer {
                 ZStack::new(cx, |cx| {
                     // background canvas
-                    widgets::StaticGridLines::new(
-                        cx,
-                        (1..=3).map(|v| v as f32 / 4.).collect(),
-                        Orientation::Horizontal,
-                    )
-                    .outline_width(Length::px(1.0));
-                    widgets::StaticGridLines::new(cx, vec![2. / 3.], Orientation::Vertical)
-                        .outline_width(Length::px(1.0))
-                        .color(Color::green());
+                    create_grid(cx);
 
                     // First, we have to know how many frame we wanna display
                     let bpm = Data::states.get(cx).host_bpm.load(Ordering::Relaxed);

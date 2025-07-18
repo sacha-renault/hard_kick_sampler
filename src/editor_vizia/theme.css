@@ -411,10 +411,10 @@ knob:disabled .knob-track {
 .knob-head {
     /* COLOR OF HEAD (round in the middle) */
     background-color: var(--background-secondary);
-    border-width: 2px;
 
     /* COLOR BETWEEN THE HEAD AND THE TRACK */
     border-color: var(--background-color);
+    border-width: 2px;
 }
 
 knob:disabled .knob-head {
