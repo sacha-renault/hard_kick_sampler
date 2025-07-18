@@ -107,7 +107,7 @@ impl ParamWidget for ButtonToggle {
 
                         HStack::new(cx, |cx| {
                             // Toggle element
-                            if matches!(builder.icon_position, IconPosition::Left) {
+                            if matches!(builder.icon_position, IconPosition::Left if !builder.icon.is_empty()) {
                                 Icon::new(cx, &builder.icon).width(Units::Auto);
                             }
 
@@ -119,7 +119,7 @@ impl ParamWidget for ButtonToggle {
                             };
                             Label::new(cx, &txt);
 
-                            if matches!(builder.icon_position, IconPosition::Right) {
+                            if matches!(builder.icon_position, IconPosition::Right if !builder.icon.is_empty()) {
                                 Icon::new(cx, &builder.icon).width(Units::Auto);
                             }
                         })
