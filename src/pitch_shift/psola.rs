@@ -55,6 +55,7 @@ impl PsolaShifter {
             CLARITY_THRESHOLD,
         ) {
             let source_wavelength = sample_rate / pitch.frequency;
+            let padding_length = source_wavelength as usize + 1;
 
             let mut hanns: Vec<AlternatingHann> = (0..channel_number)
                 .map(|_| AlternatingHann::new(source_wavelength))
@@ -63,6 +64,9 @@ impl PsolaShifter {
             let mut analysis = hanns.iter().map(TdpsolaAnalysis::new).collect::<Vec<_>>();
 
             for (channel, (analys, hann)) in analysis.iter_mut().zip(hanns.iter_mut()).enumerate() {
+                for _ in 0..padding_length {
+                    analys.push_sample(0.0, hann);
+                }
                 for sample in sample_buffer.iter().skip(channel).step_by(channel_number) {
                     analys.push_sample(*sample, hann);
                 }
@@ -79,6 +83,7 @@ impl PsolaShifter {
         } else {
             // Pitch detection failed
             self.clear_sample();
+            nih_error!("Error: couldn't detect pitch");
             false
         }
     }
@@ -123,7 +128,7 @@ impl PitchShifter for PsolaShifter {
             synthesis
                 .iter_mut()
                 .zip(self.analysis.iter())
-                .map(|(s, a)| s.iter(a).collect())
+                .map(|(s, a)| s.iter(a).skip(self.source_length as usize + 1).collect())
                 .collect(),
         );
         self.synthesis = Some(synthesis);
