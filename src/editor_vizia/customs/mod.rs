@@ -1,3 +1,5 @@
+pub mod blend;
+
 use nih_plug_vizia::vizia::prelude::*;
 
 use crate::plugin::DEFAULT_BPM;

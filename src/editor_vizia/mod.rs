@@ -401,6 +401,14 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         }),
                     );
 
+                    // Blend indicator
+                    let blend_time = Data::states
+                        .map(move |st| st.params.blend_time.value() * sr / num_frames as f32);
+                    let blend_transition = Data::states
+                        .map(move |st| st.params.blend_transition.value() * sr / num_frames as f32);
+                    customs::blend::BlendVizualizer::new(cx, blend_time, blend_transition)
+                        .visibility(Data::is_dragging_blend);
+
                     // A Container that has button !
                     HStack::new(cx, |cx| {
                         Icon::new(cx, ICON_123);
@@ -412,7 +420,6 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     .right(Pixels(PANEL_PADDING))
                     .width(Auto)
                     .height(Auto)
-                    .visibility(Data::is_dragging_blend)
                     .class("widget-panel");
                 });
             }

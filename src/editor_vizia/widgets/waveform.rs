@@ -37,10 +37,6 @@ impl Normalizer {
     }
 }
 
-/// Static waveform.
-///
-/// For displaying frequently updating waveform data, use an [`Oscilloscope`]
-/// instead.
 pub struct StaticWavePlot {
     data: Vec<[f32; 2]>,
     cached_texture: RefCell<Option<vg::ImageId>>,

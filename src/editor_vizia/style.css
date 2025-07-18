@@ -182,3 +182,8 @@ button.toggle-container:checked {
     /* Small hack, the css preprocessor let us do that hehe */
     color: var(--surface-elevated)55;
 }
+
+.blend-vizualizer {
+    outline-width: 2px;
+    color: var(--primary-color);
+}
