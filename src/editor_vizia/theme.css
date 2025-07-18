@@ -395,10 +395,12 @@ icon:disabled {
 /* KNOB */
 
 knob {
+    /* COLOR OF INACTIVE TRACK */
     background-color: var(--background-color);
 }
 
 knob .knob-track {
+    /* COLOR OF THE ACTIVE TRACK */
     color: var(--secondary-color);
 }
 
@@ -407,8 +409,11 @@ knob:disabled .knob-track {
 }
 
 .knob-head {
+    /* COLOR OF HEAD (round in the middle) */
     background-color: var(--background-secondary);
     border-width: 2px;
+
+    /* COLOR BETWEEN THE HEAD AND THE TRACK */
     border-color: var(--background-color);
 }
 
@@ -417,6 +422,8 @@ knob:disabled .knob-head {
 }
 
 knob .knob-tick {
+    /* COLOR OF THE TICK INDICATOR 
+    (the small line that rotate in the middle) */
     background-color: var(--text-secondary);
     border-radius: 1px;
 }
