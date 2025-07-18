@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
@@ -10,6 +12,8 @@ pub struct ParamKnobBuilder {
     label: Option<String>,
     hide_label: bool,
     hide_value: bool,
+    on_drag_start: Option<Arc<dyn Fn(&mut EventContext) + Send + Sync>>,
+    on_drag_end: Option<Arc<dyn Fn(&mut EventContext) + Send + Sync>>,
 }
 
 impl ParamKnobBuilder {
@@ -30,6 +34,22 @@ impl ParamKnobBuilder {
 
     pub fn hide_value(mut self) -> Self {
         self.hide_value = true;
+        self
+    }
+
+    pub fn on_drag_start<F: 'static + Fn(&mut EventContext) + Send + Sync>(
+        mut self,
+        on_drag_start: F,
+    ) -> Self {
+        self.on_drag_start = Some(Arc::new(on_drag_start));
+        self
+    }
+
+    pub fn on_drag_end<F: 'static + Fn(&mut EventContext) + Send + Sync>(
+        mut self,
+        on_drag_end: F,
+    ) -> Self {
+        self.on_drag_end = Some(Arc::new(on_drag_end));
         self
     }
 }
@@ -83,7 +103,7 @@ impl ParamWidget for ParamKnob {
                         Label::new(cx, &text);
                     }
 
-                    Knob::new(
+                    let mut knob = Knob::new(
                         cx,
                         param_data.param().default_normalized_value(),
                         param_data.make_lens(|p| p.modulated_normalized_value()),
@@ -92,6 +112,15 @@ impl ParamWidget for ParamKnob {
                     .on_changing(|cx, val| {
                         cx.emit(NormalizedParamUpdate(val));
                     });
+
+                    if let Some(on_drag) = modifiers.on_drag_start {
+                        knob = knob.on_mouse_down(move |cx, _| on_drag(cx))
+                    }
+
+                    if let Some(on_drop) = modifiers.on_drag_end {
+                        knob.on_mouse_up(move |cx, _| on_drop(cx));
+                    }
+                    // .on_drag(modifiers.on_drag_start.borrow());
 
                     if !modifiers.hide_value {
                         Label::new(
