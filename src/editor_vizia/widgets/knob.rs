@@ -120,7 +120,6 @@ impl ParamWidget for ParamKnob {
                     if let Some(on_drop) = modifiers.on_drag_end {
                         knob.on_mouse_up(move |cx, _| on_drop(cx));
                     }
-                    // .on_drag(modifiers.on_drag_start.borrow());
 
                     if !modifiers.hide_value {
                         Label::new(

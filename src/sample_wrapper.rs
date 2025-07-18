@@ -144,7 +144,7 @@ impl SamplePlayer {
             nih_log!(
                 "{} - Note playing : {} (with base note offset {}) / Playback rate : {} / sr correction {}",
                 self.index,
-                note,
+                utils::semitones_to_note(note as i32),
                 semitone_offset,
                 playback_rate,
                 sr_correction

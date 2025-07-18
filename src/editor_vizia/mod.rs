@@ -1,4 +1,5 @@
 mod customs;
+mod events;
 mod style;
 mod widgets;
 
@@ -12,6 +13,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
+use crate::editor_vizia::events::SetDraggingBlend;
 use crate::editor_vizia::widgets::widget_base::ParamWidget;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
 use crate::plugin::HardKickSampler;
@@ -32,6 +34,7 @@ pub struct Data {
     states: Arc<SharedStates>,
     selected_sample: usize,
     executor: AsyncExecutor<HardKickSampler>,
+    is_dragging_blend: bool,
 }
 
 impl Model for Data {
@@ -67,6 +70,11 @@ impl Model for Data {
                         *index,
                     )));
             }
+        });
+
+        event.map(|event: &SetDraggingBlend, meta| {
+            self.is_dragging_blend = event.0;
+            meta.consume();
         });
     }
 }
@@ -144,8 +152,14 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
         })
         .width(Stretch(0.2));
         widgets::WidgetPanel::new(cx, "Global Blend Param", |cx| {
-            widgets::ParamKnob::new(cx, Data::states, move |st| &st.params.blend_time);
-            widgets::ParamKnob::new(cx, Data::states, move |st| &st.params.blend_transition);
+            widgets::ParamKnob::builder()
+                .on_drag_start(|cx| cx.emit(SetDraggingBlend(true)))
+                .on_drag_end(|cx| cx.emit(SetDraggingBlend(false)))
+                .build(cx, Data::states, move |st| &st.params.blend_time);
+            widgets::ParamKnob::builder()
+                .on_drag_start(|cx| cx.emit(SetDraggingBlend(true)))
+                .on_drag_end(|cx| cx.emit(SetDraggingBlend(false)))
+                .build(cx, Data::states, move |st| &st.params.blend_transition);
         })
         .width(Stretch(0.3));
     })
@@ -387,7 +401,19 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         }),
                     );
 
-                    // Something else ...
+                    // A Container that has button !
+                    HStack::new(cx, |cx| {
+                        Icon::new(cx, ICON_123);
+                        Icon::new(cx, ICON_123);
+                        Icon::new(cx, ICON_123);
+                    })
+                    .left(Stretch(1.0))
+                    .top(Pixels(PANEL_PADDING))
+                    .right(Pixels(PANEL_PADDING))
+                    .width(Auto)
+                    .height(Auto)
+                    .visibility(Data::is_dragging_blend)
+                    .class("widget-panel");
                 });
             }
         })
@@ -453,6 +479,7 @@ pub fn create_editor(
                 states: states.clone(),
                 selected_sample: 0,
                 executor: async_executor.clone(),
+                is_dragging_blend: false,
             }
             .build(cx);
 
