@@ -121,7 +121,9 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
         widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
             HStack::new(cx, |cx| {
                 widgets::ButtonToggle::builder()
-                    // .with_icon(NOTE, Units::Pixels(16.))
+                    .with_icon(ICON_NOTE)
+                    .icon_size(Units::Pixels(16.))
+                    .icon_stroke_width(2.)
                     .build(cx, Data::states, move |st| &get_param(st, index).is_tonal);
 
                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
@@ -237,7 +239,9 @@ fn create_sample_info_strip(cx: &mut Context, index: usize) {
     HStack::new(cx, |cx| {
         // Button for mute / unmute
         widgets::ButtonToggle::builder()
-            // .with_icon(NO_SOUND, Units::Pixels(16.))
+            .with_icon(ICON_MUTED)
+            .icon_size(Units::Pixels(16.))
+            .icon_stroke_width(2.0)
             .build(cx, Data::states, move |st| &get_param(st, index).muted)
             .width(Stretch(1.0))
             .class("mute-toggle");
@@ -296,7 +300,7 @@ fn create_button_group(
                     cx.emit(AppEvent::FileLoading(index, path));
                 }
             },
-            |cx| svg_icon(cx, ARROW_LEFT, Units::Pixels(16.), 2.),
+            |cx| svg_icon(cx, ICON_ARROW_LEFT, Units::Pixels(16.), 2.),
         )
         .disabled(previous_file.map(|v| v.is_none()));
         Button::new(
@@ -306,7 +310,7 @@ fn create_button_group(
                     cx.emit(AppEvent::FileLoading(index, path));
                 }
             },
-            |cx| svg_icon(cx, ARROW_RIGHT, Units::Pixels(16.), 2.),
+            |cx| svg_icon(cx, ICON_ARROW_RIGHT, Units::Pixels(16.), 2.),
         )
         .disabled(next_file.map(|v| v.is_none()));
         Button::new(
@@ -431,7 +435,9 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     HStack::new(cx, |cx| {
                         widgets::ButtonToggle::builder()
                             .with_text("")
-                            // .with_icon(ICON_123, Units::Pixels(16.))
+                            .with_icon(ICON_TIME_INDICATOR)
+                            .icon_size(Units::Pixels(16.))
+                            .icon_stroke_width(2.0)
                             .build(cx, Data::states, move |st| {
                                 &get_param(st, index).show_indicator
                             })
@@ -440,14 +446,18 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                             .class("mute-toggle");
                         widgets::ButtonToggle::builder()
                             .with_text("")
-                            // .with_icon(ICON_123, Units::Pixels(16.))
+                            .with_icon(ICON_BLEND)
+                            .icon_size(Units::Pixels(16.))
+                            .icon_stroke_width(2.0)
                             .build(cx, Data::states, move |st| &get_param(st, index).show_blend)
                             .width(Auto)
                             .height(Auto)
                             .class("mute-toggle");
                         widgets::ButtonToggle::builder()
                             .with_text("")
-                            // .with_icon(ICON_123, Units::Pixels(16.))
+                            .with_icon(ICON_ADSR)
+                            .icon_size(Units::Pixels(16.))
+                            .icon_stroke_width(2.0)
                             .build(cx, Data::states, move |st| &get_param(st, index).show_adsr)
                             .width(Auto)
                             .height(Auto)

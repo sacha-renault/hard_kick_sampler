@@ -1,3 +1,5 @@
+use nih_plug::nih_error;
+use nih_plug::nih_log;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::vizia::vg;
 
@@ -13,7 +15,7 @@ impl SvgIcon {
             svg_content: svg_content.into(),
         }
         .build(cx, |cx| {
-            Label::new(cx, "");
+            Element::new(cx);
         })
     }
 }
@@ -47,6 +49,8 @@ impl View for SvgIcon {
             }
 
             canvas.restore();
+        } else {
+            nih_error!("Couldn't parse svg : {}", self.svg_content);
         }
     }
 }
@@ -70,7 +74,7 @@ impl SvgIcon {
     fn render_path(&self, cx: &mut DrawContext, canvas: &mut Canvas, path: &usvg::Path) {
         let mut vg_path = vg::Path::new();
 
-        // Convert usvg path to femtovg path
+        // Convert usvg path to vg path
         for segment in path.data().segments() {
             match segment {
                 usvg::tiny_skia_path::PathSegment::MoveTo(pt) => {
@@ -91,22 +95,39 @@ impl SvgIcon {
             }
         }
 
-        // Apply fill if present
+        // Handle fill
         if let Some(_) = path.fill() {
             let paint = self.convert_paint(cx);
             canvas.fill_path(&vg_path, &paint);
         }
 
-        // Apply stroke if present
-        if let Some(_) = path.stroke() {
-            let paint = self.convert_paint(cx);
+        // Handle stroke
+        if let Some(stroke) = path.stroke() {
+            let mut paint = self
+                .convert_paint(cx)
+                .with_line_width(cx.outline_width() * cx.scale_factor());
+
+            // Apply line cap and join
+            match stroke.linecap() {
+                usvg::LineCap::Butt => paint = paint.with_line_cap(vg::LineCap::Butt),
+                usvg::LineCap::Round => paint = paint.with_line_cap(vg::LineCap::Round),
+                usvg::LineCap::Square => paint = paint.with_line_cap(vg::LineCap::Square),
+            }
+
+            match stroke.linejoin() {
+                usvg::LineJoin::Miter | usvg::LineJoin::MiterClip => {
+                    paint = paint.with_line_join(vg::LineJoin::Miter);
+                }
+                usvg::LineJoin::Round => paint = paint.with_line_join(vg::LineJoin::Round),
+                usvg::LineJoin::Bevel => paint = paint.with_line_join(vg::LineJoin::Bevel),
+            }
+
             canvas.stroke_path(&vg_path, &paint);
         }
     }
 
     fn convert_paint(&self, cx: &mut DrawContext) -> vg::Paint {
         vg::Paint::color(cx.font_color().into())
-            .with_line_width(cx.outline_width() * cx.scale_factor())
     }
 }
 

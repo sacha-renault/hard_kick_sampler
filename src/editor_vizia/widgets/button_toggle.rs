@@ -26,10 +26,18 @@ pub struct ButtonToggleBuilder {
 
 impl ButtonToggleBuilder {
     /// Sets the icon for the toggle button
-    pub fn with_icon(mut self, icon: impl ToString, icon_size: Units, stroke_width: f32) -> Self {
+    pub fn with_icon(mut self, icon: impl ToString) -> Self {
         self.icon = icon.to_string();
-        self.icon_size = icon_size;
-        self.icon_stroke_width = stroke_width;
+        self
+    }
+    
+    pub fn icon_size(mut self, size: Units) -> Self {
+        self.icon_size = size;
+        self
+    }
+    
+    pub fn icon_stroke_width(mut self, width: f32) -> Self {
+        self.icon_stroke_width = width;
         self
     }
 
