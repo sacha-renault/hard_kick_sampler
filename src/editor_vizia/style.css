@@ -176,6 +176,16 @@ button.toggle-container:checked {
     border: 1px var(--secondary-color) solid;
 }
 
+.indicator-toggle .toggle-container:checked label,
+.indicator-toggle .toggle-container:checked {
+    color: var(--primary-color);
+}
+
+.indicator-toggle button.toggle-container:checked {
+    transition: border 100ms;
+    border: 1px var(--primary-color) solid;
+}
+
 .grid-main {
     outline-width: 1px;
     color: var(--surface-elevated)aa;

@@ -415,6 +415,9 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         Data::states.map(move |st| {
                             st.positions[index].load(Ordering::Relaxed) as f32 / num_frames as f32
                         }),
+                    )
+                    .visibility(
+                        Data::states.map(move |st| get_param(st, index).show_indicator.value()),
                     );
 
                     // Blend indicator
@@ -443,7 +446,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                             })
                             .width(Auto)
                             .height(Auto)
-                            .class("mute-toggle");
+                            .class("indicator-toggle");
                         widgets::ButtonToggle::builder()
                             .with_text("")
                             .with_icon(ICON_BLEND)
@@ -452,7 +455,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                             .build(cx, Data::states, move |st| &get_param(st, index).show_blend)
                             .width(Auto)
                             .height(Auto)
-                            .class("mute-toggle");
+                            .class("indicator-toggle");
                         widgets::ButtonToggle::builder()
                             .with_text("")
                             .with_icon(ICON_ADSR)
@@ -461,7 +464,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                             .build(cx, Data::states, move |st| &get_param(st, index).show_adsr)
                             .width(Auto)
                             .height(Auto)
-                            .class("mute-toggle");
+                            .class("indicator-toggle");
                     })
                     .col_between(Pixels(8.))
                     .left(Stretch(1.0))

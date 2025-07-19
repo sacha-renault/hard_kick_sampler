@@ -178,9 +178,9 @@ impl Default for SamplePlayerParams {
 
             show_blend: BoolParam::new("Show blend", false),
 
-            show_adsr: BoolParam::new("Show adsr", true),
+            show_adsr: BoolParam::new("Show adsr", false),
 
-            show_indicator: BoolParam::new("Show indicator", false),
+            show_indicator: BoolParam::new("Show indicator", true),
         }
     }
 }
