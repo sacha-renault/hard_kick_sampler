@@ -117,8 +117,11 @@ impl ParamWidget for ButtonToggle {
                                 Some(t) => t.clone(),
                                 None => param_name.clone(),
                             };
-                            Label::new(cx, &txt);
 
+                            if !txt.is_empty() {
+                                Label::new(cx, &txt);
+                            }
+                            
                             if matches!(builder.icon_position, IconPosition::Right if !builder.icon.is_empty()) {
                                 Icon::new(cx, &builder.icon).width(Units::Auto);
                             }
