@@ -24,6 +24,7 @@ css_var_resolver = { git = "https://github.com/sacha-renault/css_var_resolver" }
 rfd = "0.15.3"
 tdpsola = "0.1.0"
 pitch-detection = "0.3.0"
+usvg = "0.45.1"
 # Uncomment the below line to disable the on-by-default VST3 feature to remove
 # the GPL compatibility requirement
 # nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", default-features = false, features = ["assert_process_allocs"] }

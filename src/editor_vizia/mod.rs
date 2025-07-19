@@ -1,5 +1,6 @@
 mod customs;
 mod events;
+mod icons;
 mod style;
 mod widgets;
 
@@ -7,13 +8,14 @@ use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+use icons::*;
 use nih_plug::prelude::*;
-use nih_plug_vizia::vizia::icons::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
 use crate::editor_vizia::events::SetDraggingBlend;
+use crate::editor_vizia::widgets::svg_icon;
 use crate::editor_vizia::widgets::widget_base::ParamWidget;
 use crate::params::BlendGroup;
 use crate::params::{SamplePlayerParams, MAX_SAMPLES};
@@ -119,7 +121,7 @@ fn create_first_panel_row(cx: &mut Context, index: usize) {
         widgets::WidgetPanel::vnew(cx, "Tonal", |cx| {
             HStack::new(cx, |cx| {
                 widgets::ButtonToggle::builder()
-                    .with_icon(ICON_WAVE_SAW_TOOL)
+                    // .with_icon(NOTE, Units::Pixels(16.))
                     .build(cx, Data::states, move |st| &get_param(st, index).is_tonal);
 
                 widgets::ParamDragNumber::new(cx, Data::states, move |st| {
@@ -235,7 +237,7 @@ fn create_sample_info_strip(cx: &mut Context, index: usize) {
     HStack::new(cx, |cx| {
         // Button for mute / unmute
         widgets::ButtonToggle::builder()
-            .with_icon(ICON_WAVE_SAW_TOOL)
+            // .with_icon(NO_SOUND, Units::Pixels(16.))
             .build(cx, Data::states, move |st| &get_param(st, index).muted)
             .width(Stretch(1.0))
             .class("mute-toggle");
@@ -294,7 +296,7 @@ fn create_button_group(
                     cx.emit(AppEvent::FileLoading(index, path));
                 }
             },
-            |cx| Icon::new(cx, ICON_ARROW_BEAR_LEFT),
+            |cx| svg_icon(cx, ARROW_LEFT, Units::Pixels(16.), 2.),
         )
         .disabled(previous_file.map(|v| v.is_none()));
         Button::new(
@@ -304,7 +306,7 @@ fn create_button_group(
                     cx.emit(AppEvent::FileLoading(index, path));
                 }
             },
-            |cx| Icon::new(cx, ICON_ARROW_BEAR_RIGHT),
+            |cx| svg_icon(cx, ARROW_RIGHT, Units::Pixels(16.), 2.),
         )
         .disabled(next_file.map(|v| v.is_none()));
         Button::new(
@@ -429,7 +431,7 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                     HStack::new(cx, |cx| {
                         widgets::ButtonToggle::builder()
                             .with_text("")
-                            .with_icon(ICON_123)
+                            // .with_icon(ICON_123, Units::Pixels(16.))
                             .build(cx, Data::states, move |st| {
                                 &get_param(st, index).show_indicator
                             })
@@ -438,14 +440,14 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                             .class("mute-toggle");
                         widgets::ButtonToggle::builder()
                             .with_text("")
-                            .with_icon(ICON_123)
+                            // .with_icon(ICON_123, Units::Pixels(16.))
                             .build(cx, Data::states, move |st| &get_param(st, index).show_blend)
                             .width(Auto)
                             .height(Auto)
                             .class("mute-toggle");
                         widgets::ButtonToggle::builder()
                             .with_text("")
-                            .with_icon(ICON_123)
+                            // .with_icon(ICON_123, Units::Pixels(16.))
                             .build(cx, Data::states, move |st| &get_param(st, index).show_adsr)
                             .width(Auto)
                             .height(Auto)

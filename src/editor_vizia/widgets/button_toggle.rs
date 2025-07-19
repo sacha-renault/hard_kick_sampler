@@ -2,6 +2,8 @@ use nih_plug::prelude::*;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::param_base::ParamWidgetBase;
 
+use crate::editor_vizia::widgets::svg_icon;
+
 use super::widget_base::*;
 
 /// Icon position for the toggle button
@@ -18,12 +20,16 @@ pub struct ButtonToggleBuilder {
     icon: String,
     text: Option<String>,
     icon_position: IconPosition,
+    icon_size: Units,
+    icon_stroke_width: f32,
 }
 
 impl ButtonToggleBuilder {
     /// Sets the icon for the toggle button
-    pub fn with_icon(mut self, icon: impl ToString) -> Self {
+    pub fn with_icon(mut self, icon: impl ToString, icon_size: Units, stroke_width: f32) -> Self {
         self.icon = icon.to_string();
+        self.icon_size = icon_size;
+        self.icon_stroke_width = stroke_width;
         self
     }
 
@@ -108,7 +114,7 @@ impl ParamWidget for ButtonToggle {
                         HStack::new(cx, |cx| {
                             // Toggle element
                             if matches!(builder.icon_position, IconPosition::Left if !builder.icon.is_empty()) {
-                                Icon::new(cx, &builder.icon).width(Units::Auto);
+                                svg_icon(cx, &builder.icon, builder.icon_size, builder.icon_stroke_width);
                             }
 
                             // Display the current state as text
@@ -123,7 +129,7 @@ impl ParamWidget for ButtonToggle {
                             }
                             
                             if matches!(builder.icon_position, IconPosition::Right if !builder.icon.is_empty()) {
-                                Icon::new(cx, &builder.icon).width(Units::Auto);
+                                svg_icon(cx, &builder.icon, builder.icon_size, builder.icon_stroke_width);
                             }
                         })
                         .child_top(Stretch(1.0))
