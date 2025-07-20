@@ -202,3 +202,8 @@ button.toggle-container:checked {
     outline-width: 2px;
     color: var(--primary-color);
 }
+
+.adsr-vizualizer {
+    outline-width: 2px;
+    color: var(--primary-color);
+}

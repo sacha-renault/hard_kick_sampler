@@ -1,3 +1,4 @@
+pub mod adsr;
 pub mod blend;
 
 use nih_plug_vizia::vizia::prelude::*;

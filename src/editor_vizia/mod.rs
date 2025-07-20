@@ -14,7 +14,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::widgets::RawParamEvent;
 use nih_plug_vizia::{create_vizia_editor, ViziaState};
 
-use crate::editor_vizia::events::SetDraggingBlend;
+use crate::editor_vizia::events::{SetDraggingAdsr, SetDraggingBlend};
 use crate::editor_vizia::widgets::svg_icon;
 use crate::editor_vizia::widgets::widget_base::ParamWidget;
 use crate::params::BlendGroup;
@@ -38,6 +38,7 @@ pub struct Data {
     selected_sample: usize,
     executor: AsyncExecutor<HardKickSampler>,
     is_dragging_blend: bool,
+    is_dragging_adsr: bool,
 }
 
 impl Model for Data {
@@ -77,6 +78,11 @@ impl Model for Data {
 
         event.map(|event: &SetDraggingBlend, meta| {
             self.is_dragging_blend = event.0;
+            meta.consume();
+        });
+
+        event.map(|event: &SetDraggingAdsr, meta| {
+            self.is_dragging_adsr = event.0;
             meta.consume();
         });
     }
@@ -185,10 +191,22 @@ fn create_second_panel_row(cx: &mut Context, index: usize) {
     // Second panel row - equal height
     HStack::new(cx, |cx| {
         widgets::WidgetPanel::new(cx, "ADSR", |cx| {
-            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).attack);
-            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).decay);
-            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).sustain);
-            widgets::ParamKnob::new(cx, Data::states, move |st| &get_param(st, index).release);
+            widgets::ParamKnob::builder()
+                .on_drag_start(|cx| cx.emit(SetDraggingAdsr(true)))
+                .on_drag_end(|cx| cx.emit(SetDraggingAdsr(false)))
+                .build(cx, Data::states, move |st| &get_param(st, index).attack);
+            widgets::ParamKnob::builder()
+                .on_drag_start(|cx| cx.emit(SetDraggingAdsr(true)))
+                .on_drag_end(|cx| cx.emit(SetDraggingAdsr(false)))
+                .build(cx, Data::states, move |st| &get_param(st, index).decay);
+            widgets::ParamKnob::builder()
+                .on_drag_start(|cx| cx.emit(SetDraggingAdsr(true)))
+                .on_drag_end(|cx| cx.emit(SetDraggingAdsr(false)))
+                .build(cx, Data::states, move |st| &get_param(st, index).sustain);
+            widgets::ParamKnob::builder()
+                .on_drag_start(|cx| cx.emit(SetDraggingAdsr(true)))
+                .on_drag_end(|cx| cx.emit(SetDraggingAdsr(false)))
+                .build(cx, Data::states, move |st| &get_param(st, index).release);
         })
         .width(Stretch(0.5));
         widgets::WidgetPanel::new(cx, "Time Control", |cx| {
@@ -425,14 +443,31 @@ fn create_waveform_section(cx: &mut Context, index: usize) {
                         .map(move |st| st.params.blend_time.value() * sr / num_frames as f32);
                     let blend_transition = Data::states
                         .map(move |st| st.params.blend_transition.value() * sr / num_frames as f32);
-                    let visibility_binding = Data::is_dragging_blend
+                    let visibility_binding_blend = Data::is_dragging_blend
                         .map(|v| *v)
                         .or(Data::states.map(move |st| get_param(st, index).show_blend.value()))
                         .and(Data::states.map(move |st| {
                             !matches!(get_param(st, index).blend_group.value(), BlendGroup::None)
                         }));
                     customs::blend::BlendVizualizer::new(cx, blend_time, blend_transition)
-                        .visibility(visibility_binding);
+                        .visibility(visibility_binding_blend);
+
+                    // Adsr
+                    let attack = Data::states.map(move |st| {
+                        get_param(st, index).attack.value() * sr / num_frames as f32
+                    });
+                    let decay = Data::states
+                        .map(move |st| get_param(st, index).decay.value() * sr / num_frames as f32);
+                    let release = Data::states.map(move |st| {
+                        get_param(st, index).release.value() * sr / num_frames as f32
+                    });
+                    let sustain = Data::states.map(move |st| get_param(st, index).sustain.value());
+
+                    let visibility_binding_adsr = Data::is_dragging_adsr
+                        .map(|v| *v)
+                        .or(Data::states.map(move |st| get_param(st, index).show_adsr.value()));
+                    customs::adsr::AdsrVizualizer::new(cx, attack, decay, sustain, release)
+                        .visibility(visibility_binding_adsr);
 
                     // A Container that has button !
                     HStack::new(cx, |cx| {
@@ -540,6 +575,7 @@ pub fn create_editor(
                 selected_sample: 0,
                 executor: async_executor.clone(),
                 is_dragging_blend: false,
+                is_dragging_adsr: false,
             }
             .build(cx);
 
