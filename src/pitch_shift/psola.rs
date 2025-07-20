@@ -57,6 +57,7 @@ impl PsolaShifter {
             POWER_THRESHOLD,
             CLARITY_THRESHOLD,
         ) {
+            nih_plug::nih_log!("Detected frequency {}", pitch.frequency);
             let source_wavelength = sample_rate / pitch.frequency;
             let padding_length = source_wavelength as usize + 1;
 

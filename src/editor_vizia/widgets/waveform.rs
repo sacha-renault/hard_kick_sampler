@@ -125,7 +125,7 @@ impl StaticWavePlot {
 
 impl View for StaticWavePlot {
     fn element(&self) -> Option<&'static str> {
-        Some("waveform")
+        Some("static-waveform")
     }
 
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
