@@ -1,5 +1,5 @@
 use crate::{
-    pitch_shift::{PitchShiftKind, PitchShifter},
+    pitch_shift::{FrameOutput, PitchShiftKind, PitchShifter},
     utils,
 };
 
@@ -63,7 +63,7 @@ impl PitchShifter for ClassicShifter {
         self.is_loaded && self.sample_buffer.is_some()
     }
 
-    fn get_frame(&mut self, position: f32) -> Option<Vec<f32>> {
+    fn get_frame(&mut self, position: f32) -> Option<FrameOutput> {
         let buffer = self.sample_buffer.as_ref()?;
 
         let mut frame = Vec::with_capacity(self.channel_number);
@@ -88,7 +88,7 @@ impl PitchShifter for ClassicShifter {
             frame.push(sample_value);
         }
 
-        Some(frame)
+        Some(frame.into())
     }
 
     fn kind(&self) -> PitchShiftKind {

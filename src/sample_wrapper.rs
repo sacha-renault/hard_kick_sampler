@@ -9,7 +9,7 @@ use crate::adsr::Adsr;
 use crate::params::{HardKickSamplerParams, SamplePlayerParams};
 use crate::pitch_shift::classic::ClassicShifter;
 use crate::pitch_shift::psola::PsolaShifter;
-use crate::pitch_shift::{PitchShiftKind, PitchShifter};
+use crate::pitch_shift::{FrameOutput, PitchShiftKind, PitchShifter};
 use crate::tasks::AudioData;
 use crate::utils;
 
@@ -462,10 +462,25 @@ impl SamplePlayer {
             // Get the adrs value
             let adrs_envelope = self.adsr.next(attack, decay, sustain, release);
             let offset_position = utils::optional_positive_sub(position, -frames_offset);
+            let all_gains = top_gain * adrs_envelope * blend_gain * gain;
 
-            if let Some(data) = offset_position.and_then(|pos| self.pitch_shifter.get_frame(pos)) {
-                for (sample, value) in frame.into_iter().zip(data) {
-                    *sample += value * top_gain * adrs_envelope * blend_gain * gain;
+            if let Some(frame_output) =
+                offset_position.and_then(|pos| self.pitch_shifter.get_frame(pos))
+            {
+                match frame_output {
+                    FrameOutput::Mono(v) => {
+                        for sample in frame.into_iter() {
+                            *sample += v * all_gains;
+                        }
+                    }
+                    FrameOutput::Stereo(stero_v) if frame.len() == 2 => {
+                        for (sample, v) in frame.into_iter().zip(stero_v) {
+                            *sample += v * all_gains;
+                        }
+                    }
+                    _ => {
+                        // Unsupported!
+                    }
                 }
             }
         }

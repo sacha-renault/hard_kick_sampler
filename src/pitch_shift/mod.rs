@@ -9,6 +9,25 @@ pub enum PitchShiftKind {
     Psola,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum FrameOutput {
+    Mono(f32),
+    Stereo([f32; 2]),
+    Unsupported,
+}
+
+impl From<Vec<f32>> for FrameOutput {
+    fn from(value: Vec<f32>) -> Self {
+        if value.len() == 1 {
+            FrameOutput::Mono(value[0])
+        } else if value.len() == 2 {
+            FrameOutput::Stereo([value[0], value[1]])
+        } else {
+            FrameOutput::Unsupported
+        }
+    }
+}
+
 /// A trait for audio pitch shifting implementations.
 ///
 /// This trait defines the interface for pitch shifting algorithms that can load audio samples,
@@ -134,7 +153,7 @@ pub trait PitchShifter {
     /// - Mono: `[sample]`
     /// - Stereo: `[left, right]`
     /// - 5.1: `[L, R, C, LFE, Ls, Rs]`
-    fn get_frame(&mut self, position: f32) -> Option<Vec<f32>>;
+    fn get_frame(&mut self, position: f32) -> Option<FrameOutput>;
 
     /// Returns the type/algorithm used by this pitch shifter.
     fn kind(&self) -> PitchShiftKind;

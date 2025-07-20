@@ -4,7 +4,7 @@ use pitch_detection::detector::PitchDetector;
 use tdpsola::{AlternatingHann, Speed, TdpsolaAnalysis, TdpsolaSynthesis};
 
 use crate::{
-    pitch_shift::{PitchShiftKind, PitchShifter},
+    pitch_shift::{FrameOutput, PitchShiftKind, PitchShifter},
     utils,
 };
 
@@ -141,7 +141,7 @@ impl PitchShifter for PsolaShifter {
         self.is_loaded && self.iter_samples.is_some()
     }
 
-    fn get_frame(&mut self, position: f32) -> Option<Vec<f32>> {
+    fn get_frame(&mut self, position: f32) -> Option<FrameOutput> {
         self.iter_samples
             .as_ref()?
             .iter()
@@ -150,7 +150,8 @@ impl PitchShifter for PsolaShifter {
                     .get((position * self.sr_correction) as usize)
                     .copied()
             })
-            .collect()
+            .collect::<Option<Vec<_>>>()
+            .map(|v| v.into())
     }
 
     fn kind(&self) -> PitchShiftKind {
